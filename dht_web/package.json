@@ -1,0 +1,13 @@
+{
+  "name": "dht_torrent",
+  "version": "0.0.1",
+  "description": "Set of scripts for torrent network",
+  "author": "zella",
+  "license": "MIT",
+  "dependencies": {
+    "dhtspider": "0.1.0",
+    "webtorrent": "^0.103.1",
+    "rimraf": "2.6.3",
+    "dateformat" : "3.0.3"
+  }
+}
