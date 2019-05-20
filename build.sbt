@@ -5,13 +5,16 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "com.example"
 ThisBuild / organizationName := "example"
 
+resolvers +=
+  "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+
 lazy val root = (project in file("."))
   .settings(
     name := "tuapse",
     libraryDependencies += scalaTest % Test,
-    libraryDependencies += "com.github.zella" % "rx-process2" % "0.1.0-RC2",
-    libraryDependencies += "com.github.davidmoten" % "rxjava2-extras" % "0.1.+",
-    libraryDependencies += "io.reactivex.rxjava2" % "rxjava" % "2.2.+",
+    libraryDependencies += "com.github.zella" % "rx-process2" % "0.1.0-SNAPSHOT",
+    libraryDependencies += "com.github.davidmoten" % "rxjava2-extras" % "0.1.33",
+    libraryDependencies += "io.reactivex.rxjava2" % "rxjava" % "2.2.8",
 //    libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8",
 //    libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.8",
     libraryDependencies += "commons-io" % "commons-io" % "2.6",
