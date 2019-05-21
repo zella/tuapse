@@ -31,8 +31,8 @@ public class IpfsInterface {
         return streams.stdOut().toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
+                .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
-                .doOnNext(s -> logger.debug(event))
                 .timeout(60, TimeUnit.SECONDS)//TODO
                 .firstOrError();
     }
@@ -41,14 +41,15 @@ public class IpfsInterface {
         return streams.stdOut().toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
-                .filter(s -> s.startsWith(event))
-                .doOnNext(s -> logger.debug(event));
+                .doOnNext(s -> logger.debug(s))
+                .filter(s -> s.startsWith(event));
     }
 
     public IpfsInterface(PreparedStreams streams) {
         this.streams = streams;
-        myPeer = findEvent("[MyPeers]").cache();
+        myPeer = findEvent("[MyPeer]").cache();
         distributedSearchRequests = findEvents("[SearchRequest]");
+        //TODO retry should work with all stdout/started callback, take care of rx-process2
         streams.waitDone().subscribeOn(Schedulers.computation()).subscribe();
     }
 

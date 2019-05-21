@@ -40,11 +40,57 @@ public class Runner {
                                 .onErrorResumeNext(Flowable.empty())
                         , 2)
                 .subscribeOn(Schedulers.computation())
-                .subscribe(s -> logger.info("Inserted: " + s));
+        ;
+        //  .subscribe(s -> logger.info("Inserted: " + s));
+
+
         //TODO handle failure or process exit...
-//        Subprocess.ipfsRoom()
+        var ipfs = Subprocess.ipfsRoom();
+        ipfs.getMyPeer().subscribeOn(Schedulers.computation())
+                .subscribe(p -> System.out.println(p));
+        ipfs.getMyPeer().subscribeOn(Schedulers.computation())
+                .subscribe(p -> System.out.println(p));
+        ipfs.getMyPeer().subscribeOn(Schedulers.computation())
+                .subscribe(p -> System.out.println(p));
+        ipfs.getMyPeer().subscribeOn(Schedulers.computation())
+                .subscribe(p -> System.out.println(p));
+
+
+        ipfs.distributedSearchRequests()
+                .onBackpressureBuffer(4, () -> logger.warn("Search to slow!"),
+                        BackpressureOverflowStrategy.DROP_LATEST)
+                .flatMapSingle(req -> es.search(req.searchString)
+                        .flatMap(searchResult -> ipfs.searchAnswer(req.peerId, searchResult).toSingleDefault("ok")))
+                .retry()
+                //TODO correct? if all work, try to completable
+                .subscribe();
+
+
+        Scanner input = new Scanner(System.in);
+//                    System.out.println("Type text and press enter to search");
+        //off logging
+        while (input.hasNextLine()) {
+            var text = input.nextLine();
+            try {
+                var searches = ipfs.getMyPeer().zipWith(ipfs.getPeers(), (iam, they) -> {
+                            Collections.shuffle(they);
+                            //ask 8 peers
+                            return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
+                        }
+                ).flattenAsFlowable(strings -> strings)
+                        //seaarh timeout
+                        .flatMap(peer -> ipfs.searchAsk(peer, text).timeout(20, TimeUnit.SECONDS).toFlowable(), 4)
+                        .toList().blockingGet();
+                System.out.println(searches);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
 //                .subscribeOn(Schedulers.computation())
 //                .observeOn(Schedulers.computation())
+//                //TODO test retry on process exits
 //                .retry()
 //                .subscribe(ipfs -> {
 //                    ipfs.distributedSearchRequests()

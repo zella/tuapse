@@ -21,7 +21,7 @@ public class Subprocess {
 
     private static final Logger logger = LoggerFactory.getLogger(Subprocess.class);
     //TODO full path with "node.exe"
-    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "2"));
+    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "15"));
     private static final String WebTorrentExec = (System.getenv().getOrDefault("WEBTORRENT_EXEC", "dht_web/webtorrent.js"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
@@ -57,31 +57,32 @@ public class Subprocess {
                 .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
     }
 
-//    public static IpfsInterface ipfsRoom() {
-//        List<String> cmd = List.of("node", IpfsRoomExec);
-//        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-//        return new IpfsInterface(streams);
-//    }
-
-    public static Single<IpfsInterface> ipfsRoom() {
+    public static IpfsInterface ipfsRoom() {
         List<String> cmd = List.of("node", IpfsRoomExec);
         var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-        //TODO untested
-        return Single.create(emitter -> {
-            streams.started().subscribe((nuProcess) -> emitter.onSuccess(new IpfsInterface(streams)),
-                    throwable -> {
-                        if (!emitter.isDisposed())
-                            emitter.onError(throwable);
-                    });
-            streams.waitDone().subscribe(
-                    exit -> emitter.onError(exit.err.orElse(new ProcessException(-1, "Process exits without failure"))),
-                    throwable -> {
-                        if (!emitter.isDisposed())
-                            emitter.onError(throwable);
-                    });
-        });
-
-
+        return new IpfsInterface(streams);
     }
+
+//    public static Single<IpfsInterface> ipfsRoom() {
+//        List<String> cmd = List.of("node", IpfsRoomExec);
+//        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
+//        streams.stdOut().doOnNext(s -> System.out.println(new String(s)));
+//        //TODO untested
+//        return Single.create(emitter -> {
+//            streams.started().subscribe((nuProcess) -> emitter.onSuccess(new IpfsInterface(streams)),
+//                    throwable -> {
+//                        if (!emitter.isDisposed())
+//                            emitter.onError(throwable);
+//                    });
+//            streams.waitDone().subscribe(
+//                    exit -> emitter.onError(exit.err.orElse(new ProcessException(-1, "Process exits without failure"))),
+//                    throwable -> {
+//                        if (!emitter.isDisposed())
+//                            emitter.onError(throwable);
+//                    });
+//        });
+//
+
+//    }
 
 }
