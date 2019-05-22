@@ -5,6 +5,8 @@ import io.reactivex.Flowable;
 import io.reactivex.Single;
 import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.es.Es;
@@ -40,6 +42,7 @@ public class Runner {
                                 .onErrorResumeNext(Flowable.empty())
                         , 2)
                 .subscribeOn(Schedulers.computation())
+        .takeWhile(s -> es.isSpaceAllowed())
         ;
         //  .subscribe(s -> logger.info("Inserted: " + s));
 
