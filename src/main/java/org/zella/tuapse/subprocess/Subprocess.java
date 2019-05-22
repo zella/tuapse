@@ -63,7 +63,7 @@ public class Subprocess {
         return new IpfsInterface(streams);
     }
 
-//    public static Single<IpfsInterface> ipfsRoom() {
+//    public static Single<IpfsInterface> ipfsRoom2() {
 //        List<String> cmd = List.of("node", IpfsRoomExec);
 //        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
 //        streams.stdOut().doOnNext(s -> System.out.println(new String(s)));
@@ -75,14 +75,15 @@ public class Subprocess {
 //                            emitter.onError(throwable);
 //                    });
 //            streams.waitDone().subscribe(
-//                    exit -> emitter.onError(exit.err.orElse(new ProcessException(-1, "Process exits without failure"))),
+//                    exit -> {
+//                        if (!emitter.isDisposed())
+//                            emitter.onError(exit.err.orElse(new ProcessException(-1, "Process exits without failure")));
+//                    },
 //                    throwable -> {
 //                        if (!emitter.isDisposed())
 //                            emitter.onError(throwable);
 //                    });
 //        });
-//
-
 //    }
 
 }

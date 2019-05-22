@@ -12,7 +12,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "tuapse",
     libraryDependencies += scalaTest % Test,
-    libraryDependencies += "com.github.zella" % "rx-process2" % "0.1.0-SNAPSHOT",
+    libraryDependencies += "com.github.zella" % "rx-process2" % "0.1.0-SNAPSHOT2",
     libraryDependencies += "com.github.davidmoten" % "rxjava2-extras" % "0.1.33",
     libraryDependencies += "io.reactivex.rxjava2" % "rxjava" % "2.2.8",
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8",
@@ -27,4 +27,14 @@ lazy val root = (project in file("."))
     libraryDependencies += "junit" % "junit" % "4.11" % Test,
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
   )
-  
+
+// META-INF discarding
+assemblyMergeStrategy in assembly := {
+    case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+    case x => MergeStrategy.last
+}
+
+mainClass in assembly := Some("org.zella.tuapse.Runner")
+
+assemblyOutputPath in assembly := file("build/assembly.jar")
+

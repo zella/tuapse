@@ -1,0 +1,40 @@
+variables:
+  SBT_OPTS: "-Dsbt.global.base=sbt-cache/.sbtboot -Dsbt.boot.directory=sbt-cache/.boot -Dsbt.ivy.home=sbt-cache/.ivy"
+
+cache:
+  key: $CI_COMMIT_REF_SLUG # caching per branch
+  untracked: true
+  paths:
+    - "sbt-cache/.ivy.cache"
+    - "sbt-cache/.boot"
+    - "sbt-cache/.sbtboot"
+    - "sbt-cache/target"
+
+stages:
+  - test
+  - build
+
+test:
+  stage: test
+  image: "hseeberger/scala-sbt"
+  script:
+    - sbt assembly
+    - cp -r dht_web/ build/
+  artifacts:
+    paths:
+    - build
+    expire_in: 1 days
+
+build:
+  stage: build
+  image: "docker:18"
+  services:
+    - docker:18-dind
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  script:
+    - cd build/
+    - docker build --pull -t $CI_REGISTRY/darkdarker/tuapse:$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY/darkdarker/tuapse
+  only:
+    - master
