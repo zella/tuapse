@@ -21,9 +21,7 @@ stages:
 
 test:
   stage: test
-  image: "hseeberger/scala-sbt"
-  services:
-    - docker:18-dind
+  image: "hseeberger/scala-sbt:11.0.2_2.12.8_1.2.8"
   script:
     - sbt assembly
     - cp -r dht_web/ build/
