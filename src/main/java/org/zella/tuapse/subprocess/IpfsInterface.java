@@ -3,15 +3,18 @@ package org.zella.tuapse.subprocess;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
+import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
-import io.reactivex.*;
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Completable;
+import io.reactivex.Flowable;
+import io.reactivex.Single;
 import io.reactivex.functions.Predicate;
-import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.messages.Message;
-import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.TypedMessage;
+import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 
 import java.nio.charset.Charset;
@@ -53,8 +56,10 @@ public class IpfsInterface {
         this.streams = streams;
         myPeer = findEvent("[MyPeer]").cache();
         messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
-        //TODO retry should work with all stdout/started callback, take care of rx-process2
-        streams.waitDone().subscribeOn(Schedulers.computation()).subscribe();
+    }
+
+    public Single<Exit> waitExit(){
+        return this.streams.waitDone();
     }
 
     public Single<List<String>> getPeers() {

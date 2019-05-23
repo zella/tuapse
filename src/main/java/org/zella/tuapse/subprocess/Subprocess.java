@@ -3,9 +3,7 @@ package org.zella.tuapse.subprocess;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
 import com.github.zella.rxprocess2.RxNuProcessBuilder;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
-import io.reactivex.Single;
+import io.reactivex.*;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,36 +54,10 @@ public class Subprocess {
                 .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
     }
 
-    public static IpfsInterface2 ipfsRoom() {
-        return new IpfsInterface2(IpfsRoomExec);
+    public static IpfsInterface ipfsRoom() {
+        logger.debug("Ipfs requested");
+        List<String> cmd = List.of("node", IpfsRoomExec);
+        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
+        return new IpfsInterface(streams);
     }
-
-//    public static IpfsInterface ipfsRoom() {
-//        List<String> cmd = List.of("node", IpfsRoomExec);
-//        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-//        return new IpfsInterface(streams);
-//    }
-
-//    //не правильно, не может быть синглом
-//    public static Single<IpfsInterface> ipfsRoom2() {
-//        List<String> cmd = List.of("node", IpfsRoomExec);
-//        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-//        return Single.create(emitter -> {
-//            streams.started().subscribe((nuProcess) -> emitter.onSuccess(new IpfsInterface(streams)),
-//                    throwable -> {
-//                        if (!emitter.isDisposed())
-//                            emitter.onError(throwable);
-//                    });
-//            streams.waitDone().subscribe(
-//                    exit -> {
-//                        if (!emitter.isDisposed())
-//                            emitter.onError(exit.err.orElse(new ProcessException(-1, "Process exits without failure")));
-//                    },
-//                    throwable -> {
-//                        if (!emitter.isDisposed())
-//                            emitter.onError(throwable);
-//                    });
-//        });
-//    }
-
 }

@@ -11,6 +11,14 @@ public class Torrent {
     public Torrent() {
     }
 
+    public static Torrent create(String name, String infoHash, List<TFile> files){
+        var t = new Torrent();
+        t.name = name;
+        t.infoHash = infoHash;
+        t.files = files;
+        return t;
+    }
+
     @Override
     public String toString() {
         return infoHash + ", " + name;

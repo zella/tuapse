@@ -8,4 +8,12 @@ public class TFile {
 
     public TFile() {
     }
+
+    public static TFile create(int index, String path, long length) {
+        var t = new TFile();
+        t.index = index;
+        t.path = path;
+        t.length = length;
+        return t;
+    }
 }
