@@ -18,7 +18,7 @@ public class Subprocess {
 
     private static final Logger logger = LoggerFactory.getLogger(Subprocess.class);
     //TODO full path with "node.exe"
-    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "15"));
+    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "20"));
     private static final String WebTorrentExec = (System.getenv().getOrDefault("WEBTORRENT_EXEC", "dht_web/webtorrent.js"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));

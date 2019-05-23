@@ -23,15 +23,16 @@ lazy val root = (project in file("."))
 
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
 
-    //    libraryDependencies += "org.xerial" % "sqlite-jdbc" % "3.27.2.1",
     libraryDependencies += "junit" % "junit" % "4.11" % Test,
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
+    libraryDependencies += "com.google.truth" % "truth" % "0.44" % Test,
+    libraryDependencies += "org.testcontainers" % "testcontainers" % "1.11.3" % Test
   )
 
 // META-INF discarding
 assemblyMergeStrategy in assembly := {
-    case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-    case x => MergeStrategy.last
+  case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+  case x => MergeStrategy.last
 }
 
 mainClass in assembly := Some("org.zella.tuapse.Runner")

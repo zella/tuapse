@@ -1,20 +1,29 @@
 package org.zella.tuapse.es;
 
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.scalatest.junit.JUnitRunner;
+import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 
 // for assertions on Java 8 types
 import static com.google.common.truth.Truth.assertThat;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 public class EsTest {
 
-    //TODO test containers
+    @ClassRule
+    public static DockerComposeContainer environment =
+            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"));
 
     @Test
-    public void searchTest() throws IOException {
+    public void searchTest() throws IOException, InterruptedException {
         var es = new Es();
         es.createIndexIfNotExist();
 
@@ -36,6 +45,8 @@ public class EsTest {
         es.insertTorrent(t2);
         es.insertTorrent(t3);
         es.insertTorrent(t4);
+
+        Thread.sleep(5000);
 
         var search1 = es.search("ДДТ");
         assertThat(search1.size()).isEqualTo(1);

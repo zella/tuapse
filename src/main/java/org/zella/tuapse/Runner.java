@@ -45,8 +45,7 @@ public class Runner {
                 .subscribeOn(Schedulers.computation())
                 .observeOn(Schedulers.computation())
                 .takeWhile(s -> es.isSpaceAllowed())
-        ;
-        //  .subscribe(s -> logger.info("Inserted: " + s));
+        .subscribe(s -> logger.info("Inserted: " + s));
 
 
         Single.fromCallable(Subprocess::ipfsRoom).flatMapCompletable(ipfs -> {
