@@ -3,32 +3,41 @@ package org.zella.tuapse.subprocess;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
+import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
-import io.reactivex.*;
+import com.github.zella.rxprocess2.RxNuProcessBuilder;
+import com.github.zella.rxprocess2.errors.ProcessException;
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Completable;
+import io.reactivex.Flowable;
+import io.reactivex.Single;
 import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.messages.Message;
-import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.TypedMessage;
+import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class IpfsInterface {
+public class IpfsInterface2 {
 
-    private static final Logger logger = LoggerFactory.getLogger(IpfsInterface.class);
+    private static final Logger logger = LoggerFactory.getLogger(IpfsInterface2.class);
+    //TODO single instance
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final PreparedStreams streams;
+    private final String ipfsRoomExec;
 
-    private final Single<String> myPeer;
+    private PreparedStreams streams;
 
-    private final Flowable<Message> messages;
+    private Single<String> myPeer;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private Flowable<Message> messages;
+
 
     private Single<String> findEvent(String event) {
         return streams.stdOut().toFlowable(BackpressureStrategy.BUFFER)
@@ -36,7 +45,7 @@ public class IpfsInterface {
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
-               // .replay(1, TimeUnit.SECONDS) //TODO?
+                // .replay(1, TimeUnit.SECONDS) //TODO?
                 .timeout(60, TimeUnit.SECONDS)//TODO
                 .firstOrError();
     }
@@ -49,12 +58,31 @@ public class IpfsInterface {
                 .filter(s -> s.startsWith(event));
     }
 
-    public IpfsInterface(PreparedStreams streams) {
-        this.streams = streams;
-        myPeer = findEvent("[MyPeer]").cache();
-        messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
-        //TODO retry should work with all stdout/started callback, take care of rx-process2
-        streams.waitDone().subscribeOn(Schedulers.computation()).subscribe();
+
+    private Single<Exit> stackNotSafe(String ipfsRoomExec) {
+        init(ipfsRoomExec);
+        return streams.waitDone()
+                .flatMap(exit -> Single.<Exit>error(exit.err.orElse(new ProcessException(-1, "Process exits without failure"))))
+                .onErrorResumeNext(e -> {
+                    init(ipfsRoomExec);
+                    return stackNotSafe(ipfsRoomExec);
+                });
+    }
+
+    IpfsInterface2(String ipfsRoomExec) {
+        this.ipfsRoomExec = ipfsRoomExec;
+    }
+
+    public void start() {
+        stackNotSafe(ipfsRoomExec)
+                .subscribeOn(Schedulers.computation()).subscribe();
+    }
+
+    private void init(String ipfsRoomExec) {
+        List<String> cmd = List.of("node", ipfsRoomExec);
+        this.streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
+        this.myPeer = findEvent("[MyPeer]").cache();
+        this.messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
     }
 
     public Single<List<String>> getPeers() {

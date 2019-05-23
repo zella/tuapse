@@ -1,4 +1,4 @@
-package org.zella.tuapse.model;
+package org.zella.tuapse.model.torrent;
 
 import java.util.List;
 

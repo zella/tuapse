@@ -3,14 +3,13 @@ package org.zella.tuapse.subprocess;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
 import com.github.zella.rxprocess2.RxNuProcessBuilder;
-import com.github.zella.rxprocess2.errors.ProcessException;
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.model.Torrent;
+import org.zella.tuapse.model.torrent.Torrent;
 
 import java.io.StringReader;
 import java.nio.charset.Charset;
@@ -57,17 +56,20 @@ public class Subprocess {
                 .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
     }
 
-    public static IpfsInterface ipfsRoom() {
-        List<String> cmd = List.of("node", IpfsRoomExec);
-        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-        return new IpfsInterface(streams);
+    public static IpfsInterface2 ipfsRoom() {
+        return new IpfsInterface2(IpfsRoomExec);
     }
 
+//    public static IpfsInterface ipfsRoom() {
+//        List<String> cmd = List.of("node", IpfsRoomExec);
+//        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
+//        return new IpfsInterface(streams);
+//    }
+
+//    //не правильно, не может быть синглом
 //    public static Single<IpfsInterface> ipfsRoom2() {
 //        List<String> cmd = List.of("node", IpfsRoomExec);
 //        var streams = RxNuProcessBuilder.fromCommand(cmd).asStdInOut();
-//        streams.stdOut().doOnNext(s -> System.out.println(new String(s)));
-//        //TODO untested
 //        return Single.create(emitter -> {
 //            streams.started().subscribe((nuProcess) -> emitter.onSuccess(new IpfsInterface(streams)),
 //                    throwable -> {

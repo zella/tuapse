@@ -26,20 +26,18 @@ rl.on('line', function (line) {
         process.exit(-1);
     }
 
-    if (line === "[getPeers]") {
+    if (line === "[GetPeers]") {
         console.log("[Peers]" + JSON.stringify(room.getPeers()));
     }
-    if (line.startsWith("[searchAsk]")) {
-        const msg = JSON.parse(line.substr("[searchAsk]".length));
+    if (line.startsWith("[SearchAsk]")) {
+        const msg = JSON.parse(line.substr("[SearchAsk]".length));
         const peer = msg["peerId"];
-        //TODO search
-        room.sendTo(peer, "TODO")
+        room.sendTo(peer, msg["data"])
     }
-    if (line.startsWith("[searchAnswer]")) {
-        const msg = JSON.parse(line.substr("[searchAsk]".length));
+    if (line.startsWith("[SearchAnswer]")) {
+        const msg = JSON.parse(line.substr("[SearchAnswer]".length));
         const peer = msg["peerId"];
-        //TODO search
-        room.sendTo(peer, "TODO")
+        room.sendTo(peer, msg["data"])
     }
 });
 
@@ -80,7 +78,7 @@ ipfs.on('ready', () => {
     room.on('message', (message) => {
         const peerId = message.from;
         const data = message.data.toString();
-        //TODO
-        console.log()
+        const obj = { peerId: peerId, data: data };
+        console.log('[Message]' + JSON.stringify(obj));
     })
 });

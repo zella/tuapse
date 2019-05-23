@@ -3,18 +3,17 @@ package org.zella.tuapse;
 import io.reactivex.BackpressureOverflowStrategy;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.es.Es;
+import org.zella.tuapse.model.messages.impl.SearchAnswer;
+import org.zella.tuapse.model.messages.impl.SearchAsk;
+import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -42,7 +41,7 @@ public class Runner {
                                 .onErrorResumeNext(Flowable.empty())
                         , 2)
                 .subscribeOn(Schedulers.computation())
-        .takeWhile(s -> es.isSpaceAllowed())
+                .takeWhile(s -> es.isSpaceAllowed())
         ;
         //  .subscribe(s -> logger.info("Inserted: " + s));
 
@@ -59,18 +58,19 @@ public class Runner {
                 .subscribe(p -> System.out.println(p));
 
 
-        ipfs.distributedSearchRequests()
+        ipfs.distributedSearches()
                 .onBackpressureBuffer(4, () -> logger.warn("Search to slow!"),
                         BackpressureOverflowStrategy.DROP_LATEST)
-                .flatMapSingle(req -> es.search(req.searchString)
-                        .flatMap(searchResult -> ipfs.searchAnswer(req.peerId, searchResult).toSingleDefault("ok")))
+                .flatMapSingle(req -> es.search(req.m.searchString)
+                        .flatMap(searchResult -> ipfs.searchAnswer(new TypedMessage<>(req.peerId, new SearchAnswer(searchResult)))
+                                .toSingleDefault("ok")))
                 .retry()
                 //TODO correct? if all work, try to completable
                 .subscribe();
 
 
         Scanner input = new Scanner(System.in);
-//                    System.out.println("Type text and press enter to search");
+        System.out.println("Type text and press enter to search");
         //off logging
         while (input.hasNextLine()) {
             var text = input.nextLine();
@@ -82,7 +82,8 @@ public class Runner {
                         }
                 ).flattenAsFlowable(strings -> strings)
                         //seaarh timeout
-                        .flatMap(peer -> ipfs.searchAsk(peer, text).timeout(20, TimeUnit.SECONDS).toFlowable(), 4)
+                        .flatMap(peer -> ipfs.searchAsk(new TypedMessage<>(peer, new SearchAsk(text)))
+                                .timeout(20, TimeUnit.SECONDS).toFlowable(), 4)
                         .toList().blockingGet();
                 System.out.println(searches);
             } catch (Exception e) {

@@ -12,8 +12,6 @@ client.add(torrentId, function (torrent) {
         "name": torrent.name,
         "files": torrent.files.map(function (f) {
             return {
-                //TODO index exist?
-                "index": f.index,
                 "length": f.length,
                 "path": f.path
             };
