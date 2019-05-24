@@ -6,6 +6,9 @@ import org.junit.runner.RunWith;
 import org.scalatest.junit.JUnitRunner;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitAllStrategy;
+import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 
@@ -20,7 +23,11 @@ public class EsTest {
 
     @ClassRule
     public static DockerComposeContainer environment =
-            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"));
+            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
+            .waitingFor("elasticsearch",  Wait.forHttp("/all")
+                    .forStatusCode(200)
+                    .forStatusCode(404)
+            );
 
     @Test
     public void searchTest() throws IOException, InterruptedException {
