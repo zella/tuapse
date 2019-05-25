@@ -23,14 +23,13 @@ public class EsTest {
 
     @ClassRule
     public static DockerComposeContainer environment =
-            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
-            .waitingFor("elasticsearch",  Wait.forHttp("/all")
-                    .forStatusCode(200)
-                    .forStatusCode(404)
-            );
+            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"));
 
     @Test
     public void searchTest() throws IOException, InterruptedException {
+
+        Thread.sleep(30000);
+
         var es = new Es();
         es.createIndexIfNotExist();
 

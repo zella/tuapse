@@ -20,7 +20,8 @@ lazy val root = (project in file("."))
     libraryDependencies += "commons-io" % "commons-io" % "2.6",
     libraryDependencies += "org.elasticsearch.client" % "transport" % "7.0.1",
     libraryDependencies += "org.elasticsearch.client" % "elasticsearch-rest-high-level-client" % "7.0.1",
-
+    libraryDependencies += "io.vertx" % "vertx-rx-java2" % "3.7.1",
+    libraryDependencies += "io.vertx" % "vertx-web" % "3.7.1",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
 
     libraryDependencies += "junit" % "junit" % "4.11" % Test,

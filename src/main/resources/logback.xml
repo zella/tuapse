@@ -15,6 +15,6 @@
     <logger name="org.davidmoten" level="INFO" />
     <logger name="org.zella.tuapse" level="DEBUG" />
     <logger name="org.zella.tuapse.subprocess.Subprocess" level="DEBUG" />
-    <logger name="org.zella.tuapse.subprocess.IpfsInterface" level="DEBUG" />
+    <logger name="org.zella.tuapse.ipfs.impl.IpfsInterface" level="DEBUG" />
 
 </configuration>

@@ -1,27 +1,28 @@
-package org.zella.tuapse.subprocess;
+package org.zella.tuapse.ipfs.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
 import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Completable;
-import io.reactivex.Flowable;
-import io.reactivex.Single;
+import io.reactivex.*;
 import io.reactivex.functions.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.ipfs.IpfsSearch;
+import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.messages.Message;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-public class IpfsInterface {
+public class IpfsInterface implements IpfsSearch {
 
     private static final Logger logger = LoggerFactory.getLogger(IpfsInterface.class);
 
@@ -39,7 +40,7 @@ public class IpfsInterface {
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
-               // .replay(1, TimeUnit.SECONDS) //TODO?
+                // .replay(1, TimeUnit.SECONDS) //TODO?
                 .timeout(60, TimeUnit.SECONDS)//TODO
                 .firstOrError();
     }
@@ -49,7 +50,8 @@ public class IpfsInterface {
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .doOnNext(s -> logger.debug(s))
-                .filter(s -> s.startsWith(event));
+                .filter(s -> s.startsWith(event))
+                .serialize();
     }
 
     public IpfsInterface(PreparedStreams streams) {
@@ -58,7 +60,7 @@ public class IpfsInterface {
         messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
     }
 
-    public Single<Exit> waitExit(){
+    public Single<Exit> waitExit() {
         return this.streams.waitDone();
     }
 
@@ -88,10 +90,27 @@ public class IpfsInterface {
         return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAnswer]" + m.toJsonString()).getBytes()));
     }
 
-    public Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
+
+    private Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
         return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAsk]" + m.toJsonString()).getBytes()))
                 .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
                 })));
+    }
+
+    @Override
+    public Observable<List<FoundTorrent>> search(String text) {
+        return getMyPeer().zipWith(getPeers(), (iam, they) -> {
+                    Collections.shuffle(they);
+                    //ask 8 peers
+                    return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
+                }
+        ).flattenAsObservable(strings -> strings)
+                //search timeout
+                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
+                        //TODO env
+                        .timeout(30, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+
+
     }
 
 
