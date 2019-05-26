@@ -32,8 +32,8 @@ public class Runner {
         //should exit with failure if es not exist
         es.createIndexIfNotExist();
 
-
         //TODO collect until configurable disk space allows
+        //TODO disable env?
         Subprocess.spider()
                 .retry()
                 .onBackpressureBuffer(128, () -> logger.warn("Post process too slow!"),
@@ -43,22 +43,19 @@ public class Runner {
                                 .toFlowable()
                                 .doOnError(throwable -> logger.warn(throwable.getMessage()))
                                 .onErrorResumeNext(Flowable.empty())
-                        , 2)
-                .subscribeOn(Schedulers.newThread())
+                        , 2)//TODO env, 2
+                .subscribeOn(Schedulers.io())
 //                .observeOn(Schedulers.computation())
                 .takeWhile(s -> es.isSpaceAllowed())
-                .subscribe(s -> logger.info("Inserted: " + s));
-
+        ;
+//                .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
         server.listen()
                 .subscribe();
 
         Single.fromCallable(Subprocess::ipfsRoom).flatMapCompletable(ipfs -> {
-            //TODO just reference
-            Completable syncIpfs = ipfs.getMyPeer()
-                    .flatMapCompletable(peer -> Completable.fromRunnable(() -> server.ipfsUpdate().onNext(ipfs)))
-                    .subscribeOn(Schedulers.io());
+            server.ipfsUpdate(ipfs);
 
             Completable waitExit = ipfs.waitExit().flatMapCompletable(e -> Completable.error(new Exception("Process dead")))
                     .subscribeOn(Schedulers.io());
@@ -98,10 +95,10 @@ public class Runner {
 //                }
 //            }).subscribeOn(Schedulers.io());
 
-            return Completable.merge(List.of(syncIpfs, waitExit, p2pSearches));
+            return Completable.merge(List.of(waitExit, p2pSearches));
         })
                 //maybe another?
-                .doOnError(e -> server.ipfsUpdate().onNext(new IpfsDisabled()))
+                .doOnError(e -> server.ipfsUpdate(new IpfsDisabled()))
                 .retryWhen(throwables -> throwables.delay(5, TimeUnit.SECONDS))
                 .subscribeOn(Schedulers.computation())
                 .observeOn(Schedulers.computation())

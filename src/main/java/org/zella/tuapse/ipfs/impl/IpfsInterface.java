@@ -7,6 +7,7 @@ import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
 import io.reactivex.*;
 import io.reactivex.functions.Predicate;
+import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.ipfs.IpfsSearch;
@@ -40,6 +41,7 @@ public class IpfsInterface implements IpfsSearch {
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
+                .map(s -> s.substring(event.length()))
                 // .replay(1, TimeUnit.SECONDS) //TODO?
                 .timeout(60, TimeUnit.SECONDS)//TODO
                 .firstOrError();
@@ -51,13 +53,16 @@ public class IpfsInterface implements IpfsSearch {
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
+                .map(s -> s.substring(event.length()))
                 .serialize();
     }
 
     public IpfsInterface(PreparedStreams streams) {
         this.streams = streams;
-        myPeer = findEvent("[MyPeer]").cache();
+        myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io());
+        myPeer.subscribe();
         messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
+        messages.subscribe();
     }
 
     public Single<Exit> waitExit() {
@@ -65,7 +70,7 @@ public class IpfsInterface implements IpfsSearch {
     }
 
     public Single<List<String>> getPeers() {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext("[GetPeers]".getBytes()))
+        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[GetPeers]" + System.lineSeparator()).getBytes()))
                 //here we need replay in small time window
                 .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<List<String>>() {
                 })));
@@ -87,31 +92,59 @@ public class IpfsInterface implements IpfsSearch {
     }
 
     public Completable searchAnswer(TypedMessage<SearchAnswer> m) {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAnswer]" + m.toJsonString()).getBytes()));
+        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAnswer]" + m.toJsonString() + System.lineSeparator()).getBytes()));
     }
 
 
     private Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAsk]" + m.toJsonString()).getBytes()))
+        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAsk]" + m.toJsonString() + System.lineSeparator()).getBytes()))
                 .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
                 })));
     }
 
+//    @Override
+//    public Observable<List<FoundTorrent>> search(String text) {
+//        return getPeers()..doOnSuccess(strings -> logger.debug("HERE2")).flatMapObservable(strings -> {
+//            return Observable.empty();
+//        });
+//    }
+
+//    @Override
+//    public Observable<List<FoundTorrent>> search2(String text) {
+//        return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
+//                    Collections.shuffle(they);
+//                    //ask 8 peers
+//                    return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
+//                }
+//        ).flattenAsObservable(strings -> strings)
+//                //search timeout
+//                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
+//                        //TODO env
+//                        .timeout(10, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+//
+//
+//    }
+
     @Override
     public Observable<List<FoundTorrent>> search(String text) {
-        return getMyPeer().zipWith(getPeers(), (iam, they) -> {
+        return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
                     Collections.shuffle(they);
                     //ask 8 peers
                     return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
                 }
-        ).flattenAsObservable(strings -> strings)
+        )
+//                .doOnTerminate(() -> logger.debug("TERMINATED DING"))
+//
+                .toObservable()
+                .flatMapIterable(strings -> strings)
                 //search timeout
                 .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
                         //TODO env
-                        .timeout(30, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+                        .timeout(10, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
 
 
     }
+
 
 
 }

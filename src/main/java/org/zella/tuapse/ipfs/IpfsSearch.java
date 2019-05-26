@@ -1,6 +1,5 @@
 package org.zella.tuapse.ipfs;
 
-import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import org.zella.tuapse.model.es.FoundTorrent;
 

@@ -10,8 +10,9 @@ client.add(torrentId, function (torrent) {
     const obj = {
         "infoHash": torrent.infoHash,
         "name": torrent.name,
-        "files": torrent.files.map(function (f) {
+        "files": torrent.files.map(function (f, index) {
             return {
+                "index": index,
                 "length": f.length,
                 "path": f.path
             };

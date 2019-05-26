@@ -17,6 +17,7 @@ import org.zella.tuapse.ipfs.IpfsSearch;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TuapseServer {
 
@@ -24,9 +25,8 @@ public class TuapseServer {
 
     private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9256"));
 
-    private final Subject<IpfsSearch> ipfs = BehaviorSubject.<IpfsSearch>createDefault(new IpfsDisabled()).toSerialized();
 
-    private final Single<IpfsSearch> ipfsSingle = ipfs.singleOrError();
+    private AtomicReference<IpfsSearch> ipfs = new AtomicReference<>(new IpfsDisabled());
     //TODO
     private static ObjectMapper mapper = new ObjectMapper();
 
@@ -36,8 +36,8 @@ public class TuapseServer {
         this.es = es;
     }
 
-    public Subject<IpfsSearch> ipfsUpdate() {
-        return ipfs;
+    public void ipfsUpdate(IpfsSearch search) {
+        ipfs.set(search);
     }
 
     public Single<HttpServer> listen() {
@@ -50,12 +50,20 @@ public class TuapseServer {
             Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(text -> Observable.merge(List.of(
                             Single.fromCallable(() -> es.search(text)).toObservable(),
-                            ipfsSingle.flatMapObservable(_ipfs -> _ipfs.search(text))
-                    ))).timeout(60, TimeUnit.SECONDS)
-                    .subscribeOn(Schedulers.computation())//TODO home usage, schedulers io will ok
-                    .subscribe(serach -> mapper.writeValueAsString(serach + System.lineSeparator()),
-                            ctx::fail,
-                            () -> ctx.response().end());
+                            ipfs.get().search(text)
+                            .doOnTerminate(() -> logger.debug("TERMINATED"))
+                            )
+                    )).timeout(60, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
+                    .doOnSubscribe(d -> logger.info("Server started at " + Port + " port"))
+                    .subscribe(serach -> ctx.response().write(mapper.writeValueAsString(serach) + System.lineSeparator()),
+                            e -> {
+                                logger.error("Error", e);
+                                ctx.fail(e);
+                            },
+                            () -> {
+                                ctx.response().end();
+                            });
 
 
         });
