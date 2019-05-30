@@ -7,6 +7,7 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.es.Es;
 import org.zella.tuapse.es.MockEsSearch;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
@@ -24,18 +25,19 @@ public class Runner {
 
     public static void main(String[] args) throws IOException {
 
-        "ABC[tor]DEF".substring("[tor]".length());
-
-//        var es = new Es();
-        var es = new MockEsSearch();
+        var es = new Es();
+//        var es = new MockEsSearch();
         //should exit with failure if es not exist
         es.createIndexIfNotExist();
 
 
         //TODO disable env?
+        //TODO restart spider if no torrent more that 5-10 min
         Subprocess.spider()
                 .retry()
-                .onBackpressureBuffer(128, () -> logger.warn("Post process too slow!"),
+                //TODO we should have large buffer and stop spider if buffer full until its free
+                //bt idealy need investiogate bep and spider and reduce speed
+                .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                         BackpressureOverflowStrategy.DROP_LATEST)
                 .flatMap(hash -> Subprocess.webtorrent(hash)
                                 .flatMap(t -> Single.fromCallable(() -> es.insertTorrent(t)))
@@ -46,8 +48,8 @@ public class Runner {
                 .subscribeOn(Schedulers.io())
 //                .observeOn(Schedulers.computation())
                 .takeWhile(s -> es.isSpaceAllowed())
-        ;
-//                .subscribe(s -> logger.info("Inserted: " + s));
+
+                .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
         server.listen()

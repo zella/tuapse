@@ -27,6 +27,7 @@ import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.torrent.Torrent;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ public class Es {
             .build(new CacheLoader<>() {
                 @Override
                 public Long load(String key) throws Exception {
+                    logger.info("Request index size...");
                     return Es.this.indexSize();
                 }
             });
@@ -86,10 +88,6 @@ public class Es {
             client.indices().create(req2, RequestOptions.DEFAULT);
         }
     }
-
-//    public Single<String> search(String search) {
-//        return Single.timer((int) (Math.random() * (10 - 1)) + 1, TimeUnit.SECONDS).map(t -> InetAddress.getLocalHost().getHostName());
-//    }
 
     public List<FoundTorrent> search(String what) throws IOException {
 
@@ -144,8 +142,8 @@ public class Es {
 
     public Boolean isSpaceAllowed() {
         var sizeGb = indexSizeCache.getUnchecked("INDEX_SIZE") / 1024d / 1024d / 1024d;
-        logger.info("Index gb: " + sizeGb);
-        return (sizeGb > EsMaxIndexSizeGb);
+        logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
+        return (sizeGb < EsMaxIndexSizeGb);
     }
 
     private long indexSize() throws IOException {

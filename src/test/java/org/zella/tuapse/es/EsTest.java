@@ -15,6 +15,7 @@ import java.util.List;
 
 public class EsTest {
 
+    //TODO use official ElasticSearch TestContainer
     @ClassRule
     public static DockerComposeContainer environment =
             new DockerComposeContainer(new File("src/test/resources/compose-test.yml"));

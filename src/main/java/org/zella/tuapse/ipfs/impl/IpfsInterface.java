@@ -63,9 +63,10 @@ public class IpfsInterface implements IpfsSearch {
         this.stdIn = streams.stdIn();
         this.exit = streams.waitDone();
         this.stdout = streams.stdOut().replay(100, TimeUnit.MILLISECONDS);
-        myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io());
+        myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io()).doOnSuccess(logger::info);
         myPeer.subscribe();
-        messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
+        messages = findEvents("[Message]").subscribeOn(Schedulers.io())
+                .map(s -> objectMapper.readValue(s, Message.class));
         messages.subscribe();
         stdout.connect();
     }
