@@ -48,7 +48,7 @@ public class Es {
     private final LoadingCache<String, Long> indexSizeCache = CacheBuilder.newBuilder()
             .maximumSize(1)
             //TODO env
-            .expireAfterAccess(5, TimeUnit.MINUTES)
+            .expireAfterWrite(1, TimeUnit.MINUTES)
             .build(new CacheLoader<>() {
                 @Override
                 public Long load(String key) throws Exception {

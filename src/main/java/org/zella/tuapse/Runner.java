@@ -44,12 +44,12 @@ public class Runner {
                                 .toFlowable()
                                 .doOnError(throwable -> logger.warn(throwable.getMessage()))
                                 .onErrorResumeNext(Flowable.empty())
-                        , 2)//TODO env, 2
+                        , 3)//TODO env, 2
                 .subscribeOn(Schedulers.io())
 //                .observeOn(Schedulers.computation())
-                .takeWhile(s -> es.isSpaceAllowed())
+                .takeWhile(s -> es.isSpaceAllowed());
 
-                .subscribe(s -> logger.info("Inserted: " + s));
+//                .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
         server.listen()
