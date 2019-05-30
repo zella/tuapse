@@ -7,6 +7,7 @@ import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
 import io.reactivex.*;
 import io.reactivex.functions.Predicate;
+import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,11 @@ public class IpfsInterface implements IpfsSearch {
 
     private static final Logger logger = LoggerFactory.getLogger(IpfsInterface.class);
 
-    private final PreparedStreams streams;
+    private final Observer<byte[]> stdIn;
+
+    private final ConnectableObservable<byte[]> stdout;
+
+    private final Single<Exit> exit;
 
     private final Single<String> myPeer;
 
@@ -36,42 +41,42 @@ public class IpfsInterface implements IpfsSearch {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Single<String> findEvent(String event) {
-        return streams.stdOut().toFlowable(BackpressureStrategy.BUFFER)
+        return stdout.toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
-                .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
                 .map(s -> s.substring(event.length()))
-                // .replay(1, TimeUnit.SECONDS) //TODO?
-                .timeout(60, TimeUnit.SECONDS)//TODO
+                .timeout(60, TimeUnit.SECONDS)//TODO env
                 .firstOrError();
     }
 
     private Flowable<String> findEvents(String event) {
-        return streams.stdOut().toFlowable(BackpressureStrategy.BUFFER)
+        return stdout.toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
-                .doOnNext(s -> logger.debug(s))
                 .filter(s -> s.startsWith(event))
                 .map(s -> s.substring(event.length()))
                 .serialize();
     }
 
     public IpfsInterface(PreparedStreams streams) {
-        this.streams = streams;
+        this.stdIn = streams.stdIn();
+        this.exit = streams.waitDone();
+        this.stdout = streams.stdOut().replay(100, TimeUnit.MILLISECONDS);
         myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io());
         myPeer.subscribe();
         messages = findEvents("[Message]").map(s -> objectMapper.readValue(s, Message.class));
         messages.subscribe();
+        stdout.connect();
     }
 
     public Single<Exit> waitExit() {
-        return this.streams.waitDone();
+        return this.exit;
     }
 
     public Single<List<String>> getPeers() {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[GetPeers]" + System.lineSeparator()).getBytes()))
-                //here we need replay in small time window
+        return Completable.fromRunnable(() -> this.stdIn.onNext(("[GetPeers]" + System.lineSeparator()).getBytes()))
+                //here we need replay in small time window, see streams.stdOut().replay above
                 .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<List<String>>() {
                 })));
     }
@@ -92,59 +97,35 @@ public class IpfsInterface implements IpfsSearch {
     }
 
     public Completable searchAnswer(TypedMessage<SearchAnswer> m) {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAnswer]" + m.toJsonString() + System.lineSeparator()).getBytes()));
+        return Completable.fromRunnable(() -> this.stdIn.onNext(("[SearchAnswer]" + m.toJsonString() + System.lineSeparator()).getBytes()));
     }
 
 
     private Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
-        return Completable.fromRunnable(() -> streams.stdIn().onNext(("[SearchAsk]" + m.toJsonString() + System.lineSeparator()).getBytes()))
+        return Completable.fromRunnable(() -> this.stdIn.onNext(("[SearchAsk]" + m.toJsonString() + System.lineSeparator()).getBytes()))
                 .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
                 })));
     }
-
-//    @Override
-//    public Observable<List<FoundTorrent>> search(String text) {
-//        return getPeers()..doOnSuccess(strings -> logger.debug("HERE2")).flatMapObservable(strings -> {
-//            return Observable.empty();
-//        });
-//    }
-
-//    @Override
-//    public Observable<List<FoundTorrent>> search2(String text) {
-//        return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
-//                    Collections.shuffle(they);
-//                    //ask 8 peers
-//                    return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
-//                }
-//        ).flattenAsObservable(strings -> strings)
-//                //search timeout
-//                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
-//                        //TODO env
-//                        .timeout(10, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
-//
-//
-//    }
 
     @Override
     public Observable<List<FoundTorrent>> search(String text) {
         return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
                     Collections.shuffle(they);
+                    logger.debug("My peer id and peers evaluated");
                     //ask 8 peers
                     return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
                 }
-        )
-//                .doOnTerminate(() -> logger.debug("TERMINATED DING"))
-//
-                .toObservable()
+        ).toObservable()
                 .flatMapIterable(strings -> strings)
                 //search timeout
                 .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
                         //TODO env
-                        .timeout(10, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+                        .timeout(30, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
 
 
     }
-
-
-
 }
+
+//TODO if multiple users will be used this, we need room dividing mechanism.
+//Something like, room per 16 users - need investigation. For deep search user connects to different room and ask peers.
+//Basically all users connects to first constant run. If users >= 16 try connect to first room + 1 etc

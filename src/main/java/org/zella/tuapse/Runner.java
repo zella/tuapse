@@ -7,20 +7,16 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.es.Es;
+import org.zella.tuapse.es.MockEsSearch;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
-import org.zella.tuapse.model.messages.impl.SearchAsk;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.server.TuapseServer;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class Runner {
 
@@ -28,11 +24,14 @@ public class Runner {
 
     public static void main(String[] args) throws IOException {
 
-        var es = new Es();
+        "ABC[tor]DEF".substring("[tor]".length());
+
+//        var es = new Es();
+        var es = new MockEsSearch();
         //should exit with failure if es not exist
         es.createIndexIfNotExist();
 
-        //TODO collect until configurable disk space allows
+
         //TODO disable env?
         Subprocess.spider()
                 .retry()

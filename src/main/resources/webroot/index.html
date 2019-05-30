@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tuapse torrent search</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
+
+</head>
+
+<body>
+<div class="container">
+    <div id="progress" class="progress">
+        <div class="indeterminate"></div>
+    </div>
+    <div class="row valign-wrapper">
+        <div class="col s9"><input id="searchText" class="input" type="text" placeholder="What want to find"></div>
+        <div class="col s3">
+            <button id="searchBtn" class="waves-effect waves-light btn">Search</button>
+        </div>
+    </div>
+
+    <ul id="torrentsFound" class="collection">
+
+    </ul>
+
+</div>
+
+<template id="torrent-template">
+    <li class="collection-item">
+        <div class="row valign-wrapper">
+            <div class="col s6 l8"><b>{{torrent.name}}</b></div>
+            <div class="col s3 l2">
+                <a class="waves-effect waves-light btn" href="{{hrefFile}}" download="{{fileName}}">Torrent file</a>
+            </div>
+            <div class="col s3 l2">
+                <a class="waves-effect waves-light btn" href="{{href}}">Magnet</a>
+            </div>
+        </div>
+        {{#if highlights}}
+        <ul class="collection">
+            {{#each highlights}}
+            <li class="collection-item">{{{this}}}</li>
+            {{/each}}
+        </ul>
+        {{/if}}
+    </li>
+</template>
+
+<script type='text/javascript'>
+
+    function initTorrentsButton(fileBtn, magnetBtn) {
+        fileBtn.onclick = function (){
+
+        };
+
+    }
+
+    var progressEl = document.getElementById('progress');
+    progressEl.style.visibility = 'hidden';
+    var torrentsEl = document.getElementById('torrentsFound');
+    var template = document.getElementById('torrent-template').innerHTML;
+    var rendering = Handlebars.compile(template);
+    document.getElementById("searchBtn").onclick = function () {
+        torrentsEl.innerHTML = '';
+        var text = document.getElementById("searchText").value;
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/v1/search?text=" + text, true);
+        xhr.onprogress = function () {
+            console.log(xhr.responseText);
+            try {
+                var torrents = JSON.parse(xhr.responseText);
+                torrents.forEach(function (torrent) {
+
+                    torrent.fileBtnId = torrent.torrent.infoHash + "_f";
+                    torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
+                    torrent.hrefFile = "/api/v1/generateTorrentFile?hash="+torrent.torrent.infoHash;
+                    torrent.fileName = torrent.torrent.infoHash + ".torrent";
+
+                    var li = document.createElement('li'); // is a node
+                    li.innerHTML = rendering(torrent);
+                    torrentsEl.appendChild(li);
+                });
+            }
+            catch (e) {
+                console.log(e);
+            }
+        };
+
+        xhr.onloadstart = function () {
+            progressEl.style.visibility = 'visible'
+        };
+        xhr.onloadend = function () {
+            progressEl.style.visibility = 'hidden'
+        };
+
+        xhr.send();
+    };
+</script>
+
+
+</body>
+
+</html>

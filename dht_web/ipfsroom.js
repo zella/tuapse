@@ -4,6 +4,8 @@ const Room = require('ipfs-pubsub-room');
 const IPFS = require('ipfs');
 const Readline = require('readline');
 
+console.log('Try start ipfs...');
+
 if (!process.env.IPFS_ROOM) {
     console.error('IPFS_ROOM env variable should be set');
     process.exit(-1);

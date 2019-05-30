@@ -1,19 +1,15 @@
 package org.zella.tuapse.es;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.reactivex.Single;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest;
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.Requests;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.*;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -29,12 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.torrent.Torrent;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.index.query.QueryBuilders.*;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +40,20 @@ public class Es {
     private static final int EsPort = Integer.parseInt(System.getenv().getOrDefault("ES_PORT", "9200"));
     private static final String EsHost = (System.getenv().getOrDefault("ES_HOST", "localhost"));
     private static final String EsScheme = (System.getenv().getOrDefault("ES_SCHEME", "http"));
+    private static final long EsMaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("ES_MAX_INDEX_SIZE_GB", "10"));
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    private volatile long indexSizeBytes;
+    private final LoadingCache<String, Long> indexSizeCache = CacheBuilder.newBuilder()
+            .maximumSize(1)
+            //TODO env
+            .expireAfterAccess(5, TimeUnit.MINUTES)
+            .build(new CacheLoader<>() {
+                @Override
+                public Long load(String key) throws Exception {
+                    return Es.this.indexSize();
+                }
+            });
 
     private final RestHighLevelClient client = new RestHighLevelClient(
             RestClient.builder(
@@ -62,6 +64,7 @@ public class Es {
                 .source(objectMapper.writeValueAsString(t), XContentType.JSON)
                 .id(t.infoHash);
         var response = client.index(indexRequest, RequestOptions.DEFAULT);
+
         return response.getId();
     }
 
@@ -93,7 +96,10 @@ public class Es {
         SearchRequest searchRequest = Requests.searchRequest("torrents");
 
         SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-        sourceBuilder.query(QueryBuilders.matchQuery("files.path", what));
+
+        sourceBuilder.query(QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery("files.path", what))
+                .should(QueryBuilders.matchQuery("name", what)));
         sourceBuilder.from(0);
         //TODO env
         sourceBuilder.size(10);
@@ -136,10 +142,15 @@ public class Es {
 
 
 
-    //TODO use simple cache with expiration time
-    public Boolean isSpaceAllowed() throws IOException {
-        return true;
+    public Boolean isSpaceAllowed() {
+        var sizeGb = indexSizeCache.getUnchecked("INDEX_SIZE") / 1024d / 1024d / 1024d;
+        logger.info("Index gb: " + sizeGb);
+        return (sizeGb > EsMaxIndexSizeGb);
     }
 
-
+    private long indexSize() throws IOException {
+        var resp = client.getLowLevelClient().performRequest(new Request("GET", "torrents/_stats"));
+        var body = new ObjectMapper().readTree(resp.getEntity().getContent());
+        return body.get("indices").get("torrents").get("primaries").get("store").get("size_in_bytes").asLong();
+    }
 }

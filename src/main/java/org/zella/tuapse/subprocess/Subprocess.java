@@ -21,6 +21,8 @@ public class Subprocess {
     //TODO full path with "node.exe"
     private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "20"));
     private static final String WebTorrentExec = (System.getenv().getOrDefault("WEBTORRENT_EXEC", "dht_web/webtorrent.js"));
+    private static final String GenTorrentExec = (System.getenv().getOrDefault("GENTORRENT_EXEC", "dht_web/gen-torrent-file.js"));
+    private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
 
@@ -53,6 +55,16 @@ public class Subprocess {
                 .map(s -> objectMapper.readValue(s, Torrent.class))
                 .doOnSubscribe(d -> logger.debug("Fetch files for [" + hash + "] ..."))
                 .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
+    }
+
+    public static Single<String> generateTorrentFile(String hash) {
+
+        List<String> cmd = List.of("node", GenTorrentExec, hash);
+        return RxNuProcessBuilder.fromCommand(cmd)
+                .asStdOutSingle(GenTorrentTimeoutSec, TimeUnit.SECONDS)
+                .map(String::new)
+                //TODO fix me, unsafe, just use eol in js and here
+                .map(l -> l.substring("[torrentFile]".length()));
     }
 
     public static IpfsInterface ipfsRoom() {

@@ -23,7 +23,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "io.vertx" % "vertx-rx-java2" % "3.7.1",
     libraryDependencies += "io.vertx" % "vertx-web" % "3.7.1",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
-
+    libraryDependencies += "com.google.guava" % "guava" % "27.1-jre",
     libraryDependencies += "junit" % "junit" % "4.11" % Test,
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
     libraryDependencies += "com.google.truth" % "truth" % "0.44" % Test,
