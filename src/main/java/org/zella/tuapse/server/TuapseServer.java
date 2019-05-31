@@ -11,7 +11,7 @@ import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.es.Es;
+import org.zella.tuapse.storage.impl.EsIndex;
 import org.zella.tuapse.ipfs.IpfsSearch;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.providers.Json;
@@ -30,9 +30,9 @@ public class TuapseServer {
 
     private AtomicReference<IpfsSearch> ipfs = new AtomicReference<>(new IpfsDisabled());
 
-    private final Es es;
+    private final EsIndex es;
 
-    public TuapseServer(Es es) {
+    public TuapseServer(EsIndex es) {
         this.es = es;
     }
 
@@ -47,6 +47,11 @@ public class TuapseServer {
         router.get().handler(StaticHandler.create());
         router.get("/").handler(ctx -> ctx.reroute("/index.html"));
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
+        router.get("/meta").handler(ctx -> Single.fromCallable(() -> Json.mapper.writeValueAsString(es.indexMeta()))
+                .subscribe(s -> ctx.response().end(s), e -> {
+                    logger.error("Error", e);
+                    ctx.fail(e);
+                }));
         router.get("/api/v1/generateTorrentFile").handler(ctx -> {
             Single.fromCallable(() -> ctx.queryParams().get("hash"))
                     .flatMap(hash -> Subprocess.generateTorrentFile(hash).subscribeOn(Schedulers.io()))

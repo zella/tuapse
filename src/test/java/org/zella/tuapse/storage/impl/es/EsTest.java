@@ -1,4 +1,4 @@
-package org.zella.tuapse.es;
+package org.zella.tuapse.storage.impl.es;
 
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -6,6 +6,7 @@ import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.storage.impl.EsIndex;
 
 // for assertions on Java 8 types
 import static com.google.common.truth.Truth.assertThat;
@@ -19,19 +20,17 @@ public class EsTest {
     @ClassRule
     public static DockerComposeContainer environment =
             new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
-                    .withLocalCompose(true);
-//                    .waitingFor("elasticsearch",  Wait.forHttp("/all")
-//                            .forStatusCode(200)
-//                            .forStatusCode(404)
-//                    );
+                    .withLocalCompose(true)
+                    .waitingFor("elasticsearch",  Wait.forHttp("/all")
+                            .forStatusCode(200)
+                            .forStatusCode(404)
+                    );
 
 
     @Test
     public void searchTest() throws IOException, InterruptedException {
 
-        Thread.sleep(120000);
-
-        var es = new Es();
+        var es = new EsIndex();
         es.createIndexIfNotExist();
 
         var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1000);
@@ -76,7 +75,7 @@ public class EsTest {
         assertThat(search5.size()).isEqualTo(1);
         assertThat(search5.get(0).highlights.size()).isEqualTo(3);
 
-        es.isSpaceAllowed();
+        assertThat(es.isSpaceAllowed()).isTrue();
 
     }
 }

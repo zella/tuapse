@@ -1,16 +1,15 @@
-package org.zella.tuapse.es;
+package org.zella.tuapse.storage.impl;
 
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 
-import java.io.IOException;
 import java.util.List;
 
-public class MockEsSearch extends Es {
+public class MockEsSearch extends EsIndex {
 
     @Override
-    public List<FoundTorrent> search(String what) throws IOException {
+    public List<FoundTorrent> search(String what)  {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {

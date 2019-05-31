@@ -7,8 +7,8 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.es.Es;
-import org.zella.tuapse.es.MockEsSearch;
+import org.zella.tuapse.storage.impl.EsIndex;
+import org.zella.tuapse.storage.impl.es.Es;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.TypedMessage;
@@ -27,7 +27,7 @@ public class Runner {
 
     public static void main(String[] args) throws IOException {
 
-        var es = new Es();
+        var es = new EsIndex();
 //        var es = new MockEsSearch();
         //should exit with failure if es not exist
         es.createIndexIfNotExist();
