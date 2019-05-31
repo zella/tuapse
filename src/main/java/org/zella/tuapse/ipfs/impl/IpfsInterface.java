@@ -17,6 +17,7 @@ import org.zella.tuapse.model.messages.Message;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
+import org.zella.tuapse.providers.Json;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -28,6 +29,12 @@ public class IpfsInterface implements IpfsSearch {
 
     private static final Logger logger = LoggerFactory.getLogger(IpfsInterface.class);
 
+    private static final int P2pSearchTimeout = Integer.parseInt(System.getenv().getOrDefault("P2P_SEARCH_TIMEOUT_SEC", "30"));
+
+    private static final int P2pSearches = 8;
+
+    private static final int EventWaitTimeout = 8;
+
     private final Observer<byte[]> stdIn;
 
     private final ConnectableObservable<byte[]> stdout;
@@ -38,15 +45,13 @@ public class IpfsInterface implements IpfsSearch {
 
     private final Flowable<Message> messages;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     private Single<String> findEvent(String event) {
         return stdout.toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
                 .filter(s -> s.startsWith(event))
                 .map(s -> s.substring(event.length()))
-                .timeout(60, TimeUnit.SECONDS)//TODO env
+                .timeout(EventWaitTimeout, TimeUnit.SECONDS)
                 .firstOrError();
     }
 
@@ -66,7 +71,7 @@ public class IpfsInterface implements IpfsSearch {
         myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io()).doOnSuccess(logger::info);
         myPeer.subscribe();
         messages = findEvents("[Message]").subscribeOn(Schedulers.io())
-                .map(s -> objectMapper.readValue(s, Message.class));
+                .map(s -> Json.mapper.readValue(s, Message.class));
         messages.subscribe();
         stdout.connect();
     }
@@ -78,19 +83,19 @@ public class IpfsInterface implements IpfsSearch {
     public Single<List<String>> getPeers() {
         return Completable.fromRunnable(() -> this.stdIn.onNext(("[GetPeers]" + System.lineSeparator()).getBytes()))
                 //here we need replay in small time window, see streams.stdOut().replay above
-                .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<List<String>>() {
+                .andThen(findEvent("[Peers]").map(s -> Json.mapper.readValue(s, new TypeReference<List<String>>() {
                 })));
     }
 
     private Predicate<Message> byType(String type) {
-        return m -> objectMapper.readTree(m.data).get("type").asText().equals(type);
+        return m -> Json.mapper.readTree(m.data).get("type").asText().equals(type);
     }
 
     public Flowable<TypedMessage<SearchAsk>> distributedSearches() {
         return messages
                 .filter(byType("searchAsk"))
                 //double parse, but don't care for now
-                .map(m -> new TypedMessage<>(m.peerId, objectMapper.readValue(m.data, SearchAsk.class)));
+                .map(m -> new TypedMessage<>(m.peerId, Json.mapper.readValue(m.data, SearchAsk.class)));
     }
 
     public Single<String> getMyPeer() {
@@ -104,7 +109,7 @@ public class IpfsInterface implements IpfsSearch {
 
     private Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
         return Completable.fromRunnable(() -> this.stdIn.onNext(("[SearchAsk]" + m.toJsonString() + System.lineSeparator()).getBytes()))
-                .andThen(findEvent("[Peers]").map(s -> objectMapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
+                .andThen(findEvent("[Peers]").map(s -> Json.mapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
                 })));
     }
 
@@ -114,14 +119,13 @@ public class IpfsInterface implements IpfsSearch {
                     Collections.shuffle(they);
                     logger.debug("My peer id and peers evaluated");
                     //ask 8 peers
-                    return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
+                    return they.stream().filter(s -> !s.equals(iam)).limit(P2pSearches).collect(Collectors.toList());
                 }
         ).toObservable()
                 .flatMapIterable(strings -> strings)
                 //search timeout
                 .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
-                        //TODO env
-                        .timeout(30, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+                        .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
 
 
     }

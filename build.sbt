@@ -2,8 +2,8 @@ import Dependencies._
 
 ThisBuild / scalaVersion := "2.12.8"
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / organization := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization := "org.zella"
+ThisBuild / organizationName := "zella"
 
 resolvers +=
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
@@ -27,7 +27,8 @@ lazy val root = (project in file("."))
     libraryDependencies += "junit" % "junit" % "4.11" % Test,
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
     libraryDependencies += "com.google.truth" % "truth" % "0.44" % Test,
-    libraryDependencies += "org.testcontainers" % "testcontainers" % "1.11.3" % Test
+    libraryDependencies += "org.testcontainers" % "testcontainers" % "1.11.3" % Test,
+    libraryDependencies += "org.testcontainers" % "elasticsearch" % "1.11.3" % Test
   )
 
 // META-INF discarding
@@ -39,4 +40,8 @@ assemblyMergeStrategy in assembly := {
 mainClass in assembly := Some("org.zella.tuapse.Runner")
 
 assemblyOutputPath in assembly := file("build/assembly.jar")
+
+crossPaths := false
+
+autoScalaLibrary := false
 

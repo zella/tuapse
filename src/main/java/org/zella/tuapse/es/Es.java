@@ -1,6 +1,5 @@
 package org.zella.tuapse.es;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -25,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.providers.Json;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -37,18 +37,17 @@ public class Es {
 
     private static final Logger logger = LoggerFactory.getLogger(Es.class);
 
+    private static final int SearchTimeout = Integer.parseInt(System.getenv().getOrDefault("SEARCH_TIMEOUT_SEC", "60"));
+    private static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
 
     private static final int EsPort = Integer.parseInt(System.getenv().getOrDefault("ES_PORT", "9200"));
     private static final String EsHost = (System.getenv().getOrDefault("ES_HOST", "localhost"));
     private static final String EsScheme = (System.getenv().getOrDefault("ES_SCHEME", "http"));
     private static final long EsMaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("ES_MAX_INDEX_SIZE_GB", "10"));
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
     private final LoadingCache<String, Long> indexSizeCache = CacheBuilder.newBuilder()
             .maximumSize(1)
-            //TODO env
-            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
             .build(new CacheLoader<>() {
                 @Override
                 public Long load(String key) throws Exception {
@@ -63,7 +62,7 @@ public class Es {
 
     public String insertTorrent(Torrent t) throws IOException {
         IndexRequest indexRequest = new IndexRequest("torrents")
-                .source(objectMapper.writeValueAsString(t), XContentType.JSON)
+                .source(Json.mapper.writeValueAsString(t), XContentType.JSON)
                 .id(t.infoHash);
         var response = client.index(indexRequest, RequestOptions.DEFAULT);
 
@@ -99,10 +98,8 @@ public class Es {
                 .should(QueryBuilders.matchQuery("files.path", what))
                 .should(QueryBuilders.matchQuery("name", what)));
         sourceBuilder.from(0);
-        //TODO env
-        sourceBuilder.size(10);
-        //TODO env
-        sourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+        sourceBuilder.size(PageSize);
+        sourceBuilder.timeout(new TimeValue(SearchTimeout, TimeUnit.SECONDS));
 
         HighlightBuilder highlightBuilder = new HighlightBuilder();
         HighlightBuilder.Field highlightTitle =
@@ -122,7 +119,7 @@ public class Es {
         logger.debug("Found:");
         for (SearchHit hit : searchHits) {
             // do something with the SearchHit
-            Torrent torrent = objectMapper.readValue(hit.getSourceAsString(), Torrent.class);
+            Torrent torrent = Json.mapper.readValue(hit.getSourceAsString(), Torrent.class);
             logger.debug(hit.getSourceAsString());
             logger.debug("Highlights:");
             Map<String, HighlightField> highlightFields = hit.getHighlightFields();
@@ -139,7 +136,6 @@ public class Es {
     }
 
 
-
     public Boolean isSpaceAllowed() {
         var sizeGb = indexSizeCache.getUnchecked("INDEX_SIZE") / 1024d / 1024d / 1024d;
         logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
@@ -148,7 +144,7 @@ public class Es {
 
     private long indexSize() throws IOException {
         var resp = client.getLowLevelClient().performRequest(new Request("GET", "torrents/_stats"));
-        var body = new ObjectMapper().readTree(resp.getEntity().getContent());
+        var body = Json.mapper.readTree(resp.getEntity().getContent());
         return body.get("indices").get("torrents").get("primaries").get("store").get("size_in_bytes").asLong();
     }
 }

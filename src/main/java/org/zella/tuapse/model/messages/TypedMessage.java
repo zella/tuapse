@@ -3,10 +3,9 @@ package org.zella.tuapse.model.messages;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import org.zella.tuapse.providers.Json;
 
 public class TypedMessage<T> {
-
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     public final String peerId;
     public final T m;
@@ -18,9 +17,9 @@ public class TypedMessage<T> {
 
     public String toJsonString() {
         try {
-            return JsonNodeFactory.instance.objectNode()
+            return Json.mapper.writeValueAsString(JsonNodeFactory.instance.objectNode()
                     .put("peerId", peerId)
-                    .put("data", mapper.writeValueAsString(m)).asText();
+                    .put("data", Json.mapper.writeValueAsString(m)));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

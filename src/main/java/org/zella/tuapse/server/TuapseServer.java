@@ -1,6 +1,5 @@
 package org.zella.tuapse.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
@@ -13,8 +12,9 @@ import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.es.Es;
-import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.ipfs.IpfsSearch;
+import org.zella.tuapse.ipfs.impl.IpfsDisabled;
+import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
@@ -25,12 +25,10 @@ public class TuapseServer {
 
     private static final Logger logger = LoggerFactory.getLogger(TuapseServer.class);
 
-    private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9256"));
-
+    private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9257"));
+    private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "60"));
 
     private AtomicReference<IpfsSearch> ipfs = new AtomicReference<>(new IpfsDisabled());
-    //TODO
-    private static ObjectMapper mapper = new ObjectMapper();
 
     private final Es es;
 
@@ -65,9 +63,9 @@ public class TuapseServer {
                     .flatMapObservable(text -> Observable.merge(List.of(
                             Single.fromCallable(() -> es.search(text)).toObservable(),
                             ipfs.get().search(text))
-                    )).timeout(60, TimeUnit.SECONDS) //TODO  env
+                    )).timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
-                    .subscribe(search -> ctx.response().write(mapper.writeValueAsString(search) + System.lineSeparator()),
+                    .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
                             e -> {
                                 logger.error("Error", e);
                                 ctx.response().end();

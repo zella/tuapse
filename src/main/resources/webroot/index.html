@@ -13,7 +13,7 @@
 </head>
 
 <body>
-<div class="container">
+<div>
     <div id="progress" class="progress">
         <div class="indeterminate"></div>
     </div>
@@ -53,19 +53,22 @@
 
 <script type='text/javascript'>
 
-    function initTorrentsButton(fileBtn, magnetBtn) {
-        fileBtn.onclick = function (){
+    var searchBtn = document.getElementById("searchBtn");
 
-        };
-
-    }
+    document.getElementById("searchText")
+        .addEventListener("keyup", function(event) {
+            event.preventDefault();
+            if (event.keyCode === 13) {
+                searchBtn.click();
+            }
+        });
 
     var progressEl = document.getElementById('progress');
     progressEl.style.visibility = 'hidden';
     var torrentsEl = document.getElementById('torrentsFound');
     var template = document.getElementById('torrent-template').innerHTML;
     var rendering = Handlebars.compile(template);
-    document.getElementById("searchBtn").onclick = function () {
+    searchBtn.onclick = function () {
         torrentsEl.innerHTML = '';
         var text = document.getElementById("searchText").value;
         var xhr = new XMLHttpRequest();

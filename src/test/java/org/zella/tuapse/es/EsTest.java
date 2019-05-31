@@ -3,6 +3,7 @@ package org.zella.tuapse.es;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 
@@ -15,15 +16,20 @@ import java.util.List;
 
 public class EsTest {
 
-    //TODO use official ElasticSearch TestContainer
     @ClassRule
     public static DockerComposeContainer environment =
-            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"));
+            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
+                    .withLocalCompose(true);
+//                    .waitingFor("elasticsearch",  Wait.forHttp("/all")
+//                            .forStatusCode(200)
+//                            .forStatusCode(404)
+//                    );
+
 
     @Test
     public void searchTest() throws IOException, InterruptedException {
 
-        Thread.sleep(30000);
+        Thread.sleep(120000);
 
         var es = new Es();
         es.createIndexIfNotExist();

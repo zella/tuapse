@@ -23,6 +23,8 @@ public class Runner {
 
     private static final Logger logger = LoggerFactory.getLogger(Runner.class);
 
+    private static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "3"));
+
     public static void main(String[] args) throws IOException {
 
         var es = new Es();
@@ -44,12 +46,12 @@ public class Runner {
                                 .toFlowable()
                                 .doOnError(throwable -> logger.warn(throwable.getMessage()))
                                 .onErrorResumeNext(Flowable.empty())
-                        , 3)//TODO env, 2
+                        , WebtorrConcurency)
                 .subscribeOn(Schedulers.io())
 //                .observeOn(Schedulers.computation())
-                .takeWhile(s -> es.isSpaceAllowed());
+                .takeWhile(s -> es.isSpaceAllowed())
 
-//                .subscribe(s -> logger.info("Inserted: " + s));
+                .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
         server.listen()
@@ -85,7 +87,7 @@ public class Runner {
 //                        ).flattenAsFlowable(strings -> strings)
 //                                //search timeout
 //                                .flatMap(peer -> ipfs.searchAsk(new TypedMessage<>(peer, new SearchAsk(text)))
-//                                        //TODO env
+//
 //                                        .timeout(20, TimeUnit.SECONDS).toFlowable().onErrorResumeNext(Flowable.empty()), 4)
 //                                .toList().blockingGet().stream()
 //                                .map(m -> m.m.torrents.stream().map(Object::toString)).collect(Collectors.toList());

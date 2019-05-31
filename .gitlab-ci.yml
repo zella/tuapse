@@ -3,8 +3,6 @@ variables:
   DOCKER_HOST: "tcp://docker:2375"
   # Improve performance with overlayfs.
   DOCKER_DRIVER: overlay2
-services:
-  - docker:18-dind
 
 cache:
   key: $CI_COMMIT_REF_SLUG # caching per branch
@@ -22,6 +20,8 @@ stages:
 test:
   stage: test
   image: "hseeberger/scala-sbt:11.0.2_2.12.8_1.2.8"
+  services:
+    - docker:18-dind
   script:
     - sbt assembly
     - cp -r dht_web/ build/
@@ -33,6 +33,8 @@ test:
 build:
   stage: build
   image: "docker:18"
+  services:
+    - docker:18-dind
   before_script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:

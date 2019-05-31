@@ -5,7 +5,7 @@
   "author": "zella",
   "license": "MIT",
   "dependencies": {
-    "dhtspider": "0.1.0",
+    "dhtspider": "zella/dhtspider#master",
     "webtorrent": "^0.103.1",
     "rimraf": "2.6.3",
     "dateformat": "3.0.3",

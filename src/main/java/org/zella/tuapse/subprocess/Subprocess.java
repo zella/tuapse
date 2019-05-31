@@ -1,6 +1,5 @@
 package org.zella.tuapse.subprocess;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
 import com.github.zella.rxprocess2.RxNuProcessBuilder;
 import io.reactivex.*;
@@ -9,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.ipfs.impl.IpfsInterface;
 import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.providers.Json;
 
 import java.io.StringReader;
 import java.nio.charset.Charset;
@@ -25,8 +25,6 @@ public class Subprocess {
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static Flowable<String> spider() {
 
@@ -52,7 +50,7 @@ public class Subprocess {
                 .map(s -> IOUtils.readLines(new StringReader(s)).stream()
                         .filter(l -> l.startsWith("[torrent]"))
                         .map(l -> l.substring("[torrent]".length())).findFirst().get())
-                .map(s -> objectMapper.readValue(s, Torrent.class));
+                .map(s -> Json.mapper.readValue(s, Torrent.class));
 //                .doOnSubscribe(d -> logger.debug("Fetch files for [" + hash + "] ..."))
 //                .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
     }
