@@ -23,8 +23,7 @@ test:
   services:
     - docker:18-dind
   script:
-    - sbt assembly
-    - cp -r dht_web/ build/
+    - sbt 'set test in assembly := {}' clean assembly
   artifacts:
     paths:
     - build
@@ -36,8 +35,11 @@ build:
   services:
     - docker:18-dind
   before_script:
+    # build arm images on x86, not tested yet
+    - apt-get -y update && apt-get -y install qemu-user-static
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
+    - cp -r dht_web/ build/
     - cd build/
     - docker build --pull -t $CI_REGISTRY/darkdarker/tuapse:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY/darkdarker/tuapse

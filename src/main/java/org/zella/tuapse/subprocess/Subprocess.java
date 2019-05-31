@@ -37,7 +37,7 @@ public class Subprocess {
                 .filter(s -> s.startsWith("[hash]"))
                 .map(s -> s.substring("[hash]".length()))
                 .doOnNext(t -> logger.info("Found torrent [" + t + "]"))
-                .doOnSubscribe(d -> logger.debug("Starting spider.js"));
+                .doOnSubscribe(d -> logger.info("Starting spider.js"));
 
     }
 

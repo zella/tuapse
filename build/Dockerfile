@@ -4,10 +4,12 @@ COPY assembly.jar /assembly.jar
 
 COPY dht_web /dht_web
 
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && apt-get install -y nodejs && \
+ENV HTTP_PORT 9257
+
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && apt-get install -y build-essential nodejs && \
     curl -L https://www.npmjs.com/install.sh | sh && \
     cd dht_web && npm install
 
-#HEALTHCHECK CMD curl --fail -s http://localhost:${HTTP_PORT}/healthcheck || exit 1
+HEALTHCHECK CMD curl --fail -s http://localhost:${HTTP_PORT}/healthcheck || exit 1
 
 ENTRYPOINT java -jar /assembly.jar
