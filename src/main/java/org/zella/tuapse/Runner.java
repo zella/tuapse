@@ -7,12 +7,11 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.storage.impl.EsIndex;
-import org.zella.tuapse.storage.impl.es.Es;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
-import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.TypedMessage;
+import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.server.TuapseServer;
+import org.zella.tuapse.storage.impl.EsIndex;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.io.IOException;

@@ -138,12 +138,14 @@ public class EsIndex implements Index {
                 logger.debug(hit.getSourceAsString());
                 logger.debug("Highlights:");
                 Map<String, HighlightField> highlightFields = hit.getHighlightFields();
-                HighlightField highlight = highlightFields.get("files.path");
-                Text[] fragments = highlight.fragments();
                 var highlights = new ArrayList<String>();
-                for (Text f : fragments) {
-                    highlights.add(f.string());
-                    logger.debug(f.string());
+                HighlightField highlight = highlightFields.get("files.path");
+                if (highlight != null) {
+                    Text[] fragments = highlight.fragments();
+                    for (Text f : fragments) {
+                        highlights.add(f.string());
+                        logger.debug(f.string());
+                    }
                 }
                 result.add(FoundTorrent.create(torrent, highlights, hit.getScore()));
             }

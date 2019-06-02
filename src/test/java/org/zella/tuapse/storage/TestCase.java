@@ -1,42 +1,24 @@
-package org.zella.tuapse.storage.impl.es;
+package org.zella.tuapse.storage;
 
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.storage.impl.EsIndex;
 
-// for assertions on Java 8 types
-import static com.google.common.truth.Truth.assertThat;
-
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
-public class EsTest {
+import static com.google.common.truth.Truth.assertThat;
 
-    @ClassRule
-    public static DockerComposeContainer environment =
-            new DockerComposeContainer(new File("src/test/resources/compose-test.yml"))
-                    .withLocalCompose(true)
-                    .waitingFor("elasticsearch",  Wait.forHttp("/all")
-                            .forStatusCode(200)
-                            .forStatusCode(404)
-                    );
+public class TestCase {
 
+    public static void indexCase(Index es) throws InterruptedException {
 
-    @Test
-    public void searchTest() throws IOException, InterruptedException {
-
-        var es = new EsIndex();
         es.createIndexIfNotExist();
 
         var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1000);
         var f2 = TFile.create(1, "sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd ", 1000);
-        var f3 = TFile.create(2, "/music/ДДТ/в последнюю осень.mp3", 1000);
-        var t1 = Torrent.create("ДДТ", "hash1", List.of(f1, f2, f3));
+        var f3 = TFile.create(8, "/music/ДДТ/в последнюю осень.mp3", 1000);
+        var f3a = TFile.create(3, "NO DDT) HERE", 1000);
+        var t1 = Torrent.create("ДДТ дискография", "hash1", List.of(f1, f2, f3, f3a));
 
         var f4 = TFile.create(0, "/music/БИ 2/01.полковник.mp3", 1000);
         var t2 = Torrent.create("БИ 2", "hash2", List.of(f4));
@@ -47,12 +29,17 @@ public class EsTest {
         var f6 = TFile.create(0, "/films/good/forest_gamp.avi", 1000);
         var t4 = Torrent.create("Gamp", "hash4", List.of(f6));
 
+        var f7 = TFile.create(0, "SOmeFile.lol", 1000);
+        var t5 = Torrent.create("Хроники: терминатор, возвращение легенды", "hash5", List.of(f7));
+
         es.insertTorrent(t1);
         es.insertTorrent(t2);
         es.insertTorrent(t3);
         es.insertTorrent(t4);
+        es.insertTorrent(t5);
 
-        Thread.sleep(5000);
+        Thread.sleep(3000);
+
 
         var search1 = es.search("ДДТ");
         assertThat(search1.size()).isEqualTo(1);
@@ -75,7 +62,11 @@ public class EsTest {
         assertThat(search5.size()).isEqualTo(1);
         assertThat(search5.get(0).highlights.size()).isEqualTo(3);
 
-        assertThat(es.isSpaceAllowed()).isTrue();
+        var search6 = es.search("терминатор");
+        assertThat(search6.size()).isEqualTo(1);
+        assertThat(search6.get(0).highlights).isEmpty();
 
+        assertThat(es.isSpaceAllowed()).isTrue();
     }
+
 }
