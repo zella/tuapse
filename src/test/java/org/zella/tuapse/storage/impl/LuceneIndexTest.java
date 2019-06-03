@@ -16,7 +16,7 @@ public class LuceneIndexTest {
 
         var es = new LuceneIndex(dir);
 
-        TestCase.indexCase(es);
+        TestCase.searchCase(es);
 
     }
 }

@@ -4,13 +4,16 @@ import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.storage.impl.EsIndex;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static com.google.common.truth.Truth.assertThat;
 
 public class TestCase {
 
-    public static void indexCase(Index es) throws InterruptedException {
+    public static void searchCase(Index es) throws InterruptedException {
 
         es.createIndexIfNotExist();
 
@@ -67,6 +70,28 @@ public class TestCase {
         assertThat(search6.get(0).highlights).isEmpty();
 
         assertThat(es.isSpaceAllowed()).isTrue();
+    }
+
+
+    public static Torrent random() {
+
+        var filesCount = ThreadLocalRandom.current().nextInt(5, 1000);
+        var files = new ArrayList<TFile>();
+
+        for (int i = 0; i < filesCount; i++) {
+            files.add(TFile.create(ThreadLocalRandom.current().nextInt(0, 100),
+                    UUID.randomUUID().toString() + " " + UUID.randomUUID().toString() + " " + UUID.randomUUID().toString(),
+                    1000));
+        }
+
+        return Torrent.create(UUID.randomUUID().toString(), UUID.randomUUID().toString(), files);
+    }
+
+    public static void spaceAllowedCase(Index es) {
+        for (int i = 0; i < 1000; i++) {
+            es.insertTorrent(random());
+            System.out.println("inserted");
+        }
     }
 
 }

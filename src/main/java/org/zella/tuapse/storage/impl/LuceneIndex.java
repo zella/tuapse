@@ -1,6 +1,9 @@
 package org.zella.tuapse.storage.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -20,12 +23,16 @@ import org.apache.lucene.search.vectorhighlight.FastVectorHighlighter;
 import org.apache.lucene.search.vectorhighlight.FieldQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.elasticsearch.client.Request;
 import org.elasticsearch.common.collect.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.es.IndexMeta;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.providers.Utils;
 import org.zella.tuapse.storage.Index;
 
 import javax.annotation.Nullable;
@@ -35,14 +42,16 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class LuceneIndex implements Index {
 
-    private final Path dir;
 
-    private final Analyzer analyzer = new SimpleAnalyzer();
+    private static final Logger logger = LoggerFactory.getLogger(LuceneIndex.class);
+
 
     public LuceneIndex(Path dir) {
         this.dir = dir;
@@ -62,6 +71,24 @@ public class LuceneIndex implements Index {
         public FileMeta() {
         }
     }
+
+    private static final String KEY_META = "KEY_META";
+
+    private final Path dir;
+
+    private final Analyzer analyzer = new SimpleAnalyzer();
+
+
+    private final LoadingCache<String, IndexMeta> indexMetaCache = CacheBuilder.newBuilder()
+            .maximumSize(1)
+            .expireAfterWrite(1, TimeUnit.MINUTES)
+            .build(new CacheLoader<>() {
+                @Override
+                public IndexMeta load(String key) throws Exception {
+                    logger.info("Request index meta...");
+                    return LuceneIndex.this.indexMetaInternal();
+                }
+            });
 
 
     @Override
@@ -156,13 +183,6 @@ public class LuceneIndex implements Index {
                 var infoHash = doc.get("infoHash");
                 var name = doc.get("name");
 
-//                Map<Integer, String> filesPath =
-//                        doc.getFields().stream()
-//                                .filter(f -> f.name().startsWith("f_"))
-//                                .map(f -> Tuple.tuple(Integer.parseInt(StringUtils.substringAfter(f.name(), "f_")), f.stringValue()))
-//                                .collect(Collectors.toMap(Tuple::v1, Tuple::v2));
-
-
                 var sortedPaths = Arrays.asList(doc.getValues("file")).stream()
                         .sorted(Comparator.comparing(f -> f)).collect(Collectors.toList());
 
@@ -171,29 +191,6 @@ public class LuceneIndex implements Index {
                     var path = sortedPaths.get(i);
                     filesPath.put(i, path);
                 }
-
-//                Map<Integer, String> filesPath = t.files.sort(Comparator.comparing(f -> f.path))
-//                        .map(p -> {
-//                                    var ind = Integer.parseInt(StringUtils.substringBefore(p, " "));
-//                                    var path = StringUtils.substringAfter(p, " ");
-//                                    return Tuple.tuple(ind, path);
-//                                }
-//                        )
-//                        .collect(Collectors.toMap(Tuple::v1, Tuple::v2));
-
-
-//                var expHighlighter = new UnifiedHighlighter(searcher, analyzer);
-//                var test = expHighlighter.highlight("file", query, docs);
-//                var test2 = expHighlighter.highlight("file", query, docs);
-//
-//                var fq = new FieldQuery(query, reader, true, false);
-//                var fh = new FastVectorHighlighter(true, false);
-//                var fff = fh.getBestFragments(fq,reader,hit.doc,"file", 7777, 7777);
-                //Create token stream
-//                TokenStream stream = TokenSources.getAnyTokenStream(reader, hit.doc, "file", analyzer);
-//                TokenStream stream  =   TokenSources.getTokenStream( "file", null, what, analyzer, -1 );
-//                //Get highlighted text fragments
-//                String[] frags = highlighter.getBestFragments(analyzer, "file",  what, 8);
 
                 var highlights = new ArrayList<String>();
                 filesPath.forEach((i, path) -> {
@@ -222,13 +219,23 @@ public class LuceneIndex implements Index {
         }
     }
 
-    @Override
     public Boolean isSpaceAllowed() {
-        return null;
+        var sizeGb = indexMetaCache.getUnchecked(KEY_META).indexSize / 1024d / 1024d / 1024d;
+        logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
+        return (sizeGb < MaxIndexSizeGb);
     }
 
     @Override
     public IndexMeta indexMeta() {
-        return null;
+        return indexMetaCache.getUnchecked(KEY_META);
     }
+
+    private synchronized IndexMeta indexMetaInternal() throws IOException {
+        var size = Utils.size(dir);
+        Directory storageDir = FSDirectory.open(dir);
+        IndexReader reader = DirectoryReader.open(storageDir);
+        var count = reader.maxDoc();
+        return new IndexMeta(size, count);
+    }
+
 }

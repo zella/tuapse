@@ -42,15 +42,12 @@ public class EsIndex implements Index {
     private static final Logger logger = LoggerFactory.getLogger(EsIndex.class);
 
     private static final int SearchTimeout = Integer.parseInt(System.getenv().getOrDefault("SEARCH_TIMEOUT_SEC", "60"));
-    private static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
 
     private static final int EsPort = Integer.parseInt(System.getenv().getOrDefault("ES_PORT", "9200"));
     private static final String EsHost = (System.getenv().getOrDefault("ES_HOST", "localhost"));
     private static final String EsScheme = (System.getenv().getOrDefault("ES_SCHEME", "http"));
-    private static final long EsMaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("ES_MAX_INDEX_SIZE_GB", "10"));
 
     private static final String KEY_META = "KEY_META";
-
 
     private final LoadingCache<String, IndexMeta> indexMetaCache = CacheBuilder.newBuilder()
             .maximumSize(1)
@@ -159,7 +156,7 @@ public class EsIndex implements Index {
     public Boolean isSpaceAllowed() {
         var sizeGb = indexMetaCache.getUnchecked(KEY_META).indexSize / 1024d / 1024d / 1024d;
         logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
-        return (sizeGb < EsMaxIndexSizeGb);
+        return (sizeGb < MaxIndexSizeGb);
     }
 
     public IndexMeta indexMeta() {
