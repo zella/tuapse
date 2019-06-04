@@ -11,11 +11,16 @@ import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.server.TuapseServer;
+import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.storage.impl.EsIndex;
+import org.zella.tuapse.storage.impl.LuceneIndex;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class Runner {
@@ -23,13 +28,32 @@ public class Runner {
     private static final Logger logger = LoggerFactory.getLogger(Runner.class);
 
     private static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "3"));
+    private static final String IndexType = (System.getenv().getOrDefault("INDEX_TYPE", "EMBEDDED"));
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
 
-        var es = new EsIndex();
-//        var es = new MockEsSearch();
-        //should exit with failure if es not exist
-        es.createIndexIfNotExist();
+        final Index es;
+        switch (IndexType) {
+            case "EMBEDDED":
+                var path = System.getenv("EMBEDDED_INDEX_DIR");
+                Objects.requireNonNull(path);
+                es = new LuceneIndex(Paths.get(path));
+                break;
+            case "ELASTICSEARCH":
+                es = new EsIndex();
+                break;
+            default:
+                es = null;
+                System.err.println("Wrong n type");
+                System.exit(-1);
+        }
+
+        try {
+            es.createIndexIfNotExist();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
 
         //TODO disable env?
@@ -47,9 +71,7 @@ public class Runner {
                                 .onErrorResumeNext(Flowable.empty())
                         , WebtorrConcurency)
                 .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.computation())
                 .takeWhile(s -> es.isSpaceAllowed())
-
                 .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
@@ -70,33 +92,6 @@ public class Runner {
                             .flatMap(searchResult -> ipfs.searchAnswer(new TypedMessage<>(req.peerId, SearchAnswer.create(searchResult)))
                                     //TODO fix me, use completable
                                     .toSingleDefault("ok"))).ignoreElements();
-//            Completable mySearch = Completable.fromAction(() -> {
-//                Scanner input = new Scanner(System.in);
-//                System.out.println("Type text and press enter to search");
-//                //off logging
-//                while (input.hasNextLine()) {
-//                    var text = input.nextLine();
-//                    try {
-//                        var searches = ipfs.getMyPeer().zipWith(ipfs.getPeers(), (iam, they) -> {
-//                                    Collections.shuffle(they);
-//                                    //ask 8 peers
-//
-//                                    return they.stream().filter(s -> !s.equals(iam)).limit(8).collect(Collectors.toList());
-//                                }
-//                        ).flattenAsFlowable(strings -> strings)
-//                                //search timeout
-//                                .flatMap(peer -> ipfs.searchAsk(new TypedMessage<>(peer, new SearchAsk(text)))
-//
-//                                        .timeout(20, TimeUnit.SECONDS).toFlowable().onErrorResumeNext(Flowable.empty()), 4)
-//                                .toList().blockingGet().stream()
-//                                .map(m -> m.m.torrents.stream().map(Object::toString)).collect(Collectors.toList());
-//                        System.out.println(searches);
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            }).subscribeOn(Schedulers.io());
-
             return Completable.merge(List.of(waitExit, p2pSearches));
         })
                 //maybe another?

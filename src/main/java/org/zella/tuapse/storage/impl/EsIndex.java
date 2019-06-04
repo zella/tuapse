@@ -1,8 +1,5 @@
 package org.zella.tuapse.storage.impl;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import org.apache.http.HttpHost;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
@@ -14,32 +11,27 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.mapper.ParseContext;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.es.IndexMeta;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.providers.Json;
-import org.zella.tuapse.storage.Index;
+import org.zella.tuapse.storage.AbstractIndex;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class EsIndex implements Index {
+public class EsIndex extends AbstractIndex {
 
-    private static final Logger logger = LoggerFactory.getLogger(EsIndex.class);
 
     private static final int SearchTimeout = Integer.parseInt(System.getenv().getOrDefault("SEARCH_TIMEOUT_SEC", "60"));
 
@@ -47,18 +39,6 @@ public class EsIndex implements Index {
     private static final String EsHost = (System.getenv().getOrDefault("ES_HOST", "localhost"));
     private static final String EsScheme = (System.getenv().getOrDefault("ES_SCHEME", "http"));
 
-    private static final String KEY_META = "KEY_META";
-
-    private final LoadingCache<String, IndexMeta> indexMetaCache = CacheBuilder.newBuilder()
-            .maximumSize(1)
-            .expireAfterWrite(1, TimeUnit.MINUTES)
-            .build(new CacheLoader<>() {
-                @Override
-                public IndexMeta load(String key) throws Exception {
-                    logger.info("Request index meta...");
-                    return EsIndex.this.indexMetaInternal();
-                }
-            });
 
     private final RestHighLevelClient client = new RestHighLevelClient(
             RestClient.builder(
@@ -153,17 +133,8 @@ public class EsIndex implements Index {
     }
 
 
-    public Boolean isSpaceAllowed() {
-        var sizeGb = indexMetaCache.getUnchecked(KEY_META).indexSize / 1024d / 1024d / 1024d;
-        logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
-        return (sizeGb < MaxIndexSizeGb);
-    }
-
-    public IndexMeta indexMeta() {
-        return indexMetaCache.getUnchecked(KEY_META);
-    }
-
-    private IndexMeta indexMetaInternal() throws IOException {
+    @Override
+    protected IndexMeta indexMetaInternal() throws IOException {
         var resp = client.getLowLevelClient().performRequest(new Request("GET", "torrents/_stats"));
         var body = Json.mapper.readTree(resp.getEntity().getContent());
 
@@ -172,5 +143,4 @@ public class EsIndex implements Index {
 
         return new IndexMeta(size, count);
     }
-
 }

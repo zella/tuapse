@@ -13,6 +13,7 @@ import org.zella.tuapse.providers.Json;
 import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class Subprocess {
@@ -25,12 +26,19 @@ public class Subprocess {
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
+    private static final int SpiderJumpTimeSec;
+
+    static {
+        SpiderJumpTimeSec = Integer.parseInt(System.getenv().getOrDefault("SPIDER_JUMP_SEC", "8"));
+        assert SpiderJumpTimeSec > 2;
+    }
 
     public static Flowable<String> spider() {
 
         List<String> cmd = List.of("node", SpiderExec);
 
         return RxNuProcessBuilder.fromCommand(cmd)
+                .withEnv(Map.of("JUMP_NODE_SEC", String.valueOf(SpiderJumpTimeSec)))
                 .asStdOut().toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))

@@ -11,8 +11,8 @@ import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.storage.impl.EsIndex;
-import org.zella.tuapse.ipfs.IpfsSearch;
+import org.zella.tuapse.storage.Index;
+import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.subprocess.Subprocess;
@@ -28,15 +28,15 @@ public class TuapseServer {
     private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9257"));
     private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "60"));
 
-    private AtomicReference<IpfsSearch> ipfs = new AtomicReference<>(new IpfsDisabled());
+    private AtomicReference<P2pInterface> ipfs = new AtomicReference<>(new IpfsDisabled());
 
-    private final EsIndex es;
+    private final Index index;
 
-    public TuapseServer(EsIndex es) {
-        this.es = es;
+    public TuapseServer(Index index) {
+        this.index = index;
     }
 
-    public void ipfsUpdate(IpfsSearch search) {
+    public void ipfsUpdate(P2pInterface search) {
         ipfs.set(search);
     }
 
@@ -47,7 +47,12 @@ public class TuapseServer {
         router.get().handler(StaticHandler.create());
         router.get("/").handler(ctx -> ctx.reroute("/index.html"));
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
-        router.get("/meta").handler(ctx -> Single.fromCallable(() -> Json.mapper.writeValueAsString(es.indexMeta()))
+        router.get("/api/v1/p2pMeta").handler(ctx -> ipfs.get().getPeers()
+                .subscribe(meta -> ctx.response().end(Json.mapper.writeValueAsString(meta)), e -> {
+                    logger.error("Error", e);
+                    ctx.fail(e);
+                }));
+        router.get("/api/v1/indexMeta").handler(ctx -> Single.fromCallable(() -> Json.mapper.writeValueAsString(index.indexMeta()))
                 .subscribe(s -> ctx.response().end(s), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
@@ -66,7 +71,7 @@ public class TuapseServer {
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(text -> Observable.merge(List.of(
-                            Single.fromCallable(() -> es.search(text)).toObservable(),
+                            Single.fromCallable(() -> index.search(text)).toObservable(),
                             ipfs.get().search(text))
                     )).timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok

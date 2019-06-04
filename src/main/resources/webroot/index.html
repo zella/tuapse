@@ -18,6 +18,11 @@
         <div class="indeterminate"></div>
     </div>
     <div class="row valign-wrapper">
+        <div class="col s2">Peers: <span id="peersCount">0</span></div>
+        <div class="col s4">Torrents count: <span id="torrentsCount">0</span></div>
+        <div class="col s6">Summary torrent size: <span id="torrentsSize">0</span></div>
+    </div>
+    <div class="row valign-wrapper">
         <div class="col s9"><input id="searchText" class="input" type="text" placeholder="What want to find"></div>
         <div class="col s3">
             <button id="searchBtn" class="waves-effect waves-light btn">Search</button>
@@ -56,7 +61,7 @@
     var searchBtn = document.getElementById("searchBtn");
 
     document.getElementById("searchText")
-        .addEventListener("keyup", function(event) {
+        .addEventListener("keyup", function (event) {
             event.preventDefault();
             if (event.keyCode === 13) {
                 searchBtn.click();
@@ -81,7 +86,7 @@
 
                     torrent.fileBtnId = torrent.torrent.infoHash + "_f";
                     torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
-                    torrent.hrefFile = "/api/v1/generateTorrentFile?hash="+torrent.torrent.infoHash;
+                    torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
                     torrent.fileName = torrent.torrent.infoHash + ".torrent";
 
                     var li = document.createElement('li'); // is a node
@@ -103,6 +108,59 @@
 
         xhr.send();
     };
+
+    function updP2pMeta() {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                var meta = JSON.parse(xhr.responseText);
+                document.getElementById('peersCount').innerHTML = meta.count;
+            }
+        };
+        xhr.open('GET', '/api/v1/p2pMeta', true);
+        xhr.send();
+    }
+
+    function updIndexMeta() {
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                var meta = JSON.parse(xhr.responseText);
+                document.getElementById('torrentsCount').innerHTML = meta.docsCount;
+                document.getElementById('torrentsSize').innerHTML = humanFileSize(meta.indexSize, false);
+            }
+        };
+        xhr.open('GET', '/api/v1/indexMeta', true);
+        xhr.send();
+    }
+
+    function humanFileSize(bytes, si) {
+        var thresh = si ? 1000 : 1024;
+        if (Math.abs(bytes) < thresh) {
+            return bytes + ' B';
+        }
+        var units = si
+            ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+            : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+        var u = -1;
+        do {
+            bytes /= thresh;
+            ++u;
+        } while (Math.abs(bytes) >= thresh && u < units.length - 1);
+        return bytes.toFixed(1) + ' ' + units[u];
+    }
+
+    setInterval(function () {
+        updP2pMeta();
+    }, 60000); //1 min
+
+    setInterval(function () {
+        updIndexMeta();
+    }, 60000); //1 min
+
+    updIndexMeta();
+    updP2pMeta();
+
 </script>
 
 

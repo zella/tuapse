@@ -1,7 +1,6 @@
 package org.zella.tuapse.ipfs.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.davidmoten.rx2.Strings;
 import com.github.zella.rxprocess2.Exit;
 import com.github.zella.rxprocess2.PreparedStreams;
@@ -11,7 +10,7 @@ import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.ipfs.IpfsSearch;
+import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.messages.Message;
 import org.zella.tuapse.model.messages.TypedMessage;
@@ -25,7 +24,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class IpfsInterface implements IpfsSearch {
+public class IpfsInterface implements P2pInterface {
 
     private static final Logger logger = LoggerFactory.getLogger(IpfsInterface.class);
 
@@ -80,11 +79,13 @@ public class IpfsInterface implements IpfsSearch {
         return this.exit;
     }
 
-    public Single<List<String>> getPeers() {
+    public Single<IpfsMeta> getPeers() {
         return Completable.fromRunnable(() -> this.stdIn.onNext(("[GetPeers]" + System.lineSeparator()).getBytes()))
                 //here we need replay in small time window, see streams.stdOut().replay above
-                .andThen(findEvent("[Peers]").map(s -> Json.mapper.readValue(s, new TypeReference<List<String>>() {
-                })));
+                .andThen(findEvent("[Peers]")
+                        .doOnSuccess(s -> logger.debug("Peers: " + s))
+                        .map(s -> new IpfsMeta(Json.mapper.readValue(s, new TypeReference<List<String>>() {
+                        }))));
     }
 
     private Predicate<Message> byType(String type) {
@@ -116,10 +117,10 @@ public class IpfsInterface implements IpfsSearch {
     @Override
     public Observable<List<FoundTorrent>> search(String text) {
         return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
-                    Collections.shuffle(they);
+                    Collections.shuffle(they.peers);
                     logger.debug("My peer id and peers evaluated");
                     //ask 8 peers
-                    return they.stream().filter(s -> !s.equals(iam)).limit(P2pSearches).collect(Collectors.toList());
+                    return they.peers.stream().filter(s -> !s.equals(iam)).limit(P2pSearches).collect(Collectors.toList());
                 }
         ).toObservable()
                 .flatMapIterable(strings -> strings)

@@ -29,19 +29,35 @@ test:
     - build
     expire_in: 1 days
 
-build:
+build_x86:
   stage: build
   image: "docker:18"
   services:
-    - docker:18-dind
+   - name: docker:18-dind
+     command: ["--experimental"]
   before_script:
-    # build arm images on x86, not tested yet
-    - apt-get -y update && apt-get -y install qemu-user-static
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
   script:
     - cp -r dht_web/ build/
     - cd build/
-    - docker build --pull -t $CI_REGISTRY/darkdarker/tuapse:$CI_COMMIT_SHORT_SHA .
+    - docker build -f Dockerfile_x86 --platform linux/amd64 --pull -t $CI_REGISTRY/darkdarker/tuapse:x86_$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY/darkdarker/tuapse
+  only:
+    - master
+
+build_arm32v7:
+  stage: build
+  image: "docker:18"
+  services:
+   - name: docker:18-dind
+     command: ["--experimental"]
+
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+  script:
+    - cp -r dht_web/ build/
+    - cd build/
+    - docker build -f Dockerfile_arm32v7 --platform linux/arm/v7 --pull -t $CI_REGISTRY/darkdarker/tuapse:arm32v7_$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY/darkdarker/tuapse
   only:
     - master

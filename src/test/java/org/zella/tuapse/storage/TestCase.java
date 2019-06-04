@@ -73,25 +73,29 @@ public class TestCase {
     }
 
 
-    public static Torrent random() {
+    private static Torrent random() {
 
-        var filesCount = ThreadLocalRandom.current().nextInt(5, 1000);
+        var filesCount = ThreadLocalRandom.current().nextInt(199, 200);
         var files = new ArrayList<TFile>();
 
         for (int i = 0; i < filesCount; i++) {
             files.add(TFile.create(ThreadLocalRandom.current().nextInt(0, 100),
-                    UUID.randomUUID().toString() + " " + UUID.randomUUID().toString() + " " + UUID.randomUUID().toString(),
+                    UUID.randomUUID().toString() + ", " + UUID.randomUUID().toString() + ',' + UUID.randomUUID().toString(),
                     1000));
         }
 
         return Torrent.create(UUID.randomUUID().toString(), UUID.randomUUID().toString(), files);
     }
 
-    public static void spaceAllowedCase(Index es) {
-        for (int i = 0; i < 1000; i++) {
+    public static void spaceAllowedCase(Index es, int n) {
+        es.createIndexIfNotExist();
+
+        for (int i = 0; i < n; i++) {
             es.insertTorrent(random());
-            System.out.println("inserted");
+            if (i % 10 == 0)
+                System.out.println("inserted " + i);
         }
+        assertThat(es.isSpaceAllowed()).isTrue();
     }
 
 }

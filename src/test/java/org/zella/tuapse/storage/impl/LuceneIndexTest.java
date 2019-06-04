@@ -1,6 +1,7 @@
 package org.zella.tuapse.storage.impl;
 
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.zella.tuapse.storage.TestCase;
 
@@ -17,6 +18,17 @@ public class LuceneIndexTest {
         var es = new LuceneIndex(dir);
 
         TestCase.searchCase(es);
+
+    }
+
+    @Test
+    public void spaceTest() throws IOException, InterruptedException {
+
+        var dir = Files.createTempDirectory("tuapse");
+
+        var es = new LuceneIndex(dir);
+
+        TestCase.spaceAllowedCase(es, 1000);
 
     }
 }
