@@ -84,9 +84,9 @@ public class TuapseServer {
 
 
         });
-        return Vertx.vertx().createHttpServer().
-                requestHandler(router).rxListen(Port)
-                .doOnSubscribe(d -> logger.info("Server started at " + Port + " port"));
+        return vertx.createHttpServer().
+                requestHandler(router).rxListen(Port);
+//                .doOnSubscribe(d -> logger.info("Server started at " + Port + " port"));
     }
 
 }

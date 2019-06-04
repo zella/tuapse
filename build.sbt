@@ -18,7 +18,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8",
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.8",
     libraryDependencies += "commons-io" % "commons-io" % "2.6",
-      //es 7.1.1 uses lucene 8.0.0, some problem use latest lucene on classpath TOFO
+      //es 7.1.1 uses lucene 8.0.0, some problem use latest lucene on classpath TODO
     libraryDependencies += "org.elasticsearch.client" % "transport" % "7.1.1",
     libraryDependencies += "org.elasticsearch.client" % "elasticsearch-rest-high-level-client" % "7.1.1",
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "8.1.1",
@@ -38,15 +38,19 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.testcontainers" % "elasticsearch" % "1.11.3" % Test
   )
 
-// META-INF discarding
 assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
-  case x => MergeStrategy.last
+    case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
+    case x if x.contains("libjnidispatch.so") => MergeStrategy.last
+    case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
 }
 
 mainClass in assembly := Some("org.zella.tuapse.Runner")
 
 assemblyOutputPath in assembly := file("build/assembly.jar")
+
+test in assembly := {}
 
 crossPaths := false
 

@@ -36,7 +36,10 @@ public class Runner {
         switch (IndexType) {
             case "EMBEDDED":
                 var path = System.getenv("EMBEDDED_INDEX_DIR");
-                Objects.requireNonNull(path);
+                if (path == null) {
+                    System.err.println("EMBEDDED_INDEX_DIR env variable not set");
+                    System.exit(-1);
+                }
                 es = new LuceneIndex(Paths.get(path));
                 break;
             case "ELASTICSEARCH":
@@ -44,7 +47,7 @@ public class Runner {
                 break;
             default:
                 es = null;
-                System.err.println("Wrong n type");
+                System.err.println("Wrong index type");
                 System.exit(-1);
         }
 
@@ -61,7 +64,7 @@ public class Runner {
         Subprocess.spider()
                 .retry()
                 //TODO we should have large buffer and stop spider if buffer full until its free
-                //bt idealy need investiogate bep and spider and reduce speed
+                //bt idealy need investigate bep_005 and spider and reduce speed
                 .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                         BackpressureOverflowStrategy.DROP_LATEST)
                 .flatMap(hash -> Subprocess.webtorrent(hash)
@@ -75,8 +78,6 @@ public class Runner {
                 .subscribe(s -> logger.info("Inserted: " + s));
 
         var server = new TuapseServer(es);
-        server.listen()
-                .subscribe();
 
         Single.fromCallable(Subprocess::ipfsRoom).flatMapCompletable(ipfs -> {
             server.ipfsUpdate(ipfs);
@@ -100,6 +101,8 @@ public class Runner {
                 .subscribeOn(Schedulers.computation())
                 .observeOn(Schedulers.computation())
                 .subscribe();
+
+        server.listen().subscribe(s -> logger.info("Server started at " + s.actualPort() + " port"));
 
     }
 }
