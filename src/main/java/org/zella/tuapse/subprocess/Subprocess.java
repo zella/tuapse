@@ -26,6 +26,8 @@ public class Subprocess {
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
+    private static final String WebTorrGenDir = (System.getenv().getOrDefault("WEBTOR_GEN_DIR", "/tmp/webtorrent_gen/"));
+    private static final String WebTorrSpiderDir = (System.getenv().getOrDefault("WEBTOR_SPIDER_DIR", "/tmp/webtorrent_spider/"));
     private static final int SpiderJumpTimeSec;
 
     static {
@@ -53,20 +55,20 @@ public class Subprocess {
 
         List<String> cmd = List.of("node", WebTorrentExec, hash);
         return RxNuProcessBuilder.fromCommand(cmd)
+                .withEnv(Map.of("WEBTOR_SPIDER_DIR", WebTorrSpiderDir))
                 .asStdOutSingle(WebTorrentTimeoutSec, TimeUnit.SECONDS)
                 .map(String::new)
                 .map(s -> IOUtils.readLines(new StringReader(s)).stream()
                         .filter(l -> l.startsWith("[torrent]"))
                         .map(l -> l.substring("[torrent]".length())).findFirst().get())
                 .map(s -> Json.mapper.readValue(s, Torrent.class));
-//                .doOnSubscribe(d -> logger.debug("Fetch files for [" + hash + "] ..."))
-//                .doOnSuccess(t -> logger.debug("Fetched files for [" + hash + "]"));
     }
 
     public static Single<String> generateTorrentFile(String hash) {
 
         List<String> cmd = List.of("node", GenTorrentExec, hash);
         return RxNuProcessBuilder.fromCommand(cmd)
+                .withEnv(Map.of("WEBTOR_GEN_DIR", WebTorrGenDir))
                 .asStdOutSingle(GenTorrentTimeoutSec, TimeUnit.SECONDS)
                 .map(String::new)
                 //TODO fix me, unsafe, just use eol in js and here
