@@ -11,6 +11,7 @@ import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
@@ -72,7 +73,7 @@ public class TuapseServer {
             Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(text -> Observable.merge(List.of(
                             Single.fromCallable(() -> index.search(text)).toObservable(),
-                            ipfs.get().search(text))
+                            ipfs.get().search(text, AbstractIndex.PageSize))
                     )).timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),

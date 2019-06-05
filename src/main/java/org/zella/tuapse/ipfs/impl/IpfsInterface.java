@@ -17,6 +17,7 @@ import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.providers.RxUtils;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -67,7 +68,7 @@ public class IpfsInterface implements P2pInterface {
         this.stdIn = streams.stdIn();
         this.exit = streams.waitDone();
         this.stdout = streams.stdOut().replay(100, TimeUnit.MILLISECONDS);
-        myPeer = findEvent("[MyPeer]").cache().subscribeOn(Schedulers.io()).doOnSuccess(logger::info);
+        myPeer = findEvent("[MyPeer]").doOnSuccess(logger::info).cache().subscribeOn(Schedulers.io());
         myPeer.subscribe();
         messages = findEvents("[Message]").subscribeOn(Schedulers.io())
                 .map(s -> Json.mapper.readValue(s, Message.class));
@@ -115,7 +116,7 @@ public class IpfsInterface implements P2pInterface {
     }
 
     @Override
-    public Observable<List<FoundTorrent>> search(String text) {
+    public Observable<List<FoundTorrent>> search(String text, int pageSize) {
         return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
                     Collections.shuffle(they.peers);
                     logger.debug("My peer id and peers evaluated");
@@ -125,8 +126,9 @@ public class IpfsInterface implements P2pInterface {
         ).toObservable()
                 .flatMapIterable(strings -> strings)
                 //search timeout
-                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text))).map(a -> a.m.torrents)
-                        .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4);
+                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text, pageSize))).map(a -> a.m.torrents)
+                        .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4)
+                .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash));
 
 
     }

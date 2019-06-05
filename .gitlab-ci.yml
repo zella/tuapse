@@ -40,7 +40,7 @@ build_x86:
   script:
     - cp -r dht_web/ build/
     - cd build/
-    - docker build -f Dockerfile_x86 --platform linux/amd64 --pull -t $CI_REGISTRY/darkdarker/tuapse:x86_$CI_COMMIT_SHORT_SHA .
+    - docker build -f Dockerfile_x86 --platform linux/amd64 --pull -t $CI_REGISTRY/darkdarker/tuapse/x86:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY/darkdarker/tuapse
   only:
     - master
@@ -57,7 +57,7 @@ build_arm32v7:
   script:
     - cp -r dht_web/ build/
     - cd build/
-    - docker build -f Dockerfile_arm32v7 --platform linux/arm/v7 --pull -t $CI_REGISTRY/darkdarker/tuapse:arm32v7_$CI_COMMIT_SHORT_SHA .
+    - docker build -f Dockerfile_arm32v7 --platform linux/arm/v7 --pull -t $CI_REGISTRY/darkdarker/tuapse/arm32v7:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY/darkdarker/tuapse
   only:
     - master

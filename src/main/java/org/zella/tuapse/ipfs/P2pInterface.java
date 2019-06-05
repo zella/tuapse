@@ -10,7 +10,7 @@ public interface P2pInterface {
 
     Single<IpfsMeta> getPeers();
 
-    Observable<List<FoundTorrent>> search(String text);
+    Observable<List<FoundTorrent>> search(String text, int pageSize);
 
     class IpfsMeta {
         public final List<String> peers;

@@ -1,11 +1,15 @@
 const WebTorrent = require('webtorrent');
 const Rimraf = require("rimraf");
-const client = new WebTorrent();
 const Os = require('os');
+const path = require('path');
+
+const client = new WebTorrent();
+
+const dir = process.env.WEBTOR_SPIDER_DIR || "/tmp/webtorrent_spider/";
 
 const torrentId = process.argv[2];
 
-client.add(torrentId, function (torrent) {
+client.add(torrentId, {path: dir}, function (torrent) {
 
     const obj = {
         "infoHash": torrent.infoHash,
@@ -21,7 +25,7 @@ client.add(torrentId, function (torrent) {
 
     torrent.destroy();
 
-    Rimraf.sync("/tmp/webtorrent/" + torrent.infoHash);
+    Rimraf.sync(path.join(dir, torrent.infoHash));
 
     process.stdout.write("[torrent]" + JSON.stringify(obj) + Os.EOL, () => process.exit());
 

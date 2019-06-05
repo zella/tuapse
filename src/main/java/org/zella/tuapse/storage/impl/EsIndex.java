@@ -80,7 +80,7 @@ public class EsIndex extends AbstractIndex {
         }
     }
 
-    public List<FoundTorrent> search(String what) {
+    public List<FoundTorrent> search(String what, int pageSize) {
         try {
             SearchRequest searchRequest = Requests.searchRequest("torrents");
 
@@ -90,7 +90,7 @@ public class EsIndex extends AbstractIndex {
                     .should(QueryBuilders.matchQuery("files.path", what))
                     .should(QueryBuilders.matchQuery("name", what)));
             sourceBuilder.from(0);
-            sourceBuilder.size(PageSize);
+            sourceBuilder.size(Math.min(pageSize, PageSize));
             sourceBuilder.timeout(new TimeValue(SearchTimeout, TimeUnit.SECONDS));
 
             HighlightBuilder highlightBuilder = new HighlightBuilder();

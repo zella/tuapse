@@ -15,7 +15,8 @@ public class IpfsDisabled implements P2pInterface {
     }
 
     @Override
-    public Observable<List<FoundTorrent>> search(String text) {
+    public Observable<List<FoundTorrent>> search(String text, int pageSize) {
         return Observable.empty();
     }
+
 }

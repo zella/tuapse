@@ -14,6 +14,8 @@ public interface Index {
 
     List<FoundTorrent> search(String what);
 
+    List<FoundTorrent> search(String what, int pageSize);
+
     Boolean isSpaceAllowed();
 
     IndexMeta indexMeta();

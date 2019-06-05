@@ -126,7 +126,7 @@ public class LuceneIndex extends AbstractIndex {
     }
 
     @Override
-    public synchronized List<FoundTorrent> search(String what) {
+    public synchronized List<FoundTorrent> search(String what, int pageSize) {
         try {
             //TODO cant share directory!
             Directory storageDir = FSDirectory.open(dir);
@@ -142,7 +142,7 @@ public class LuceneIndex extends AbstractIndex {
 
             var query = both.build();
 
-            TopDocs docs = searcher.search(both.build(), PageSize);
+            TopDocs docs = searcher.search(both.build(), Math.min(pageSize, PageSize));
             var result = new ArrayList<FoundTorrent>();
             for (ScoreDoc hit : docs.scoreDocs) {
                 var doc = searcher.doc(hit.doc);

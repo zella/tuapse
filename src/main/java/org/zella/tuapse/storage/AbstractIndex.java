@@ -5,19 +5,21 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.es.IndexMeta;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractIndex implements Index {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
-    protected final long MaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("MAX_INDEX_SIZE_GB", "10"));
-    protected final long MetaCacheExpireMin = Long.parseLong(System.getenv().getOrDefault("META_CACHE_EXPIRE_MIN", "5"));
+    public static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
+    protected static final long MaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("MAX_INDEX_SIZE_GB", "10"));
+    protected static final long MetaCacheExpireMin = Long.parseLong(System.getenv().getOrDefault("META_CACHE_EXPIRE_MIN", "5"));
 
     private static final String KEY_META = "KEY_META";
 
@@ -37,6 +39,11 @@ public abstract class AbstractIndex implements Index {
         var sizeGb = indexMetaCache.getUnchecked(KEY_META).indexSize / 1024d / 1024d / 1024d;
         logger.info("Index gb: " + new DecimalFormat("#.######").format(sizeGb));
         return (sizeGb < MaxIndexSizeGb);
+    }
+
+    @Override
+    public List<FoundTorrent> search(String what) {
+        return search(what, PageSize);
     }
 
     @Override

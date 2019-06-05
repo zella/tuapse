@@ -16,11 +16,8 @@ import org.zella.tuapse.storage.impl.EsIndex;
 import org.zella.tuapse.storage.impl.LuceneIndex;
 import org.zella.tuapse.subprocess.Subprocess;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class Runner {
@@ -89,7 +86,7 @@ public class Runner {
                     .subscribeOn(Schedulers.io())
                     .onBackpressureBuffer(4, () -> logger.warn("Search to slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
-                    .flatMapSingle(req -> Single.fromCallable(() -> es.search(req.m.searchString))
+                    .flatMapSingle(req -> Single.fromCallable(() -> es.search(req.m.searchString, req.m.pageSize))
                             .flatMap(searchResult -> ipfs.searchAnswer(new TypedMessage<>(req.peerId, SearchAnswer.create(searchResult)))
                                     //TODO fix me, use completable
                                     .toSingleDefault("ok"))).ignoreElements();

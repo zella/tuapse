@@ -1,7 +1,6 @@
 # tuapse
-Torrent meta collector
 
-Collects torrent info with files path to text file
+Torrent meta collector and p2p search
 
 Based on:  
 https://github.com/alanyang/dhtspider  

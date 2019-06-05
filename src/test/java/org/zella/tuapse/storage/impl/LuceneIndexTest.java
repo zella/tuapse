@@ -22,7 +22,8 @@ public class LuceneIndexTest {
     }
 
     @Test
-    public void spaceTest() throws IOException, InterruptedException {
+    @Ignore
+    public void spaceTest() throws IOException {
 
         var dir = Files.createTempDirectory("tuapse");
 
