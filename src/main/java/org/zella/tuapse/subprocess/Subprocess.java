@@ -31,7 +31,7 @@ public class Subprocess {
     private static final int SpiderJumpTimeSec;
 
     static {
-        SpiderJumpTimeSec = Integer.parseInt(System.getenv().getOrDefault("SPIDER_JUMP_SEC", "8"));
+        SpiderJumpTimeSec = Integer.parseInt(System.getenv().getOrDefault("SPIDER_JUMP_SEC", "6"));
         assert SpiderJumpTimeSec > 2;
     }
 

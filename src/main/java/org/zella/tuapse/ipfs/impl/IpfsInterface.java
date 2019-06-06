@@ -33,7 +33,7 @@ public class IpfsInterface implements P2pInterface {
 
     private static final int P2pSearches = 8;
 
-    private static final int EventWaitTimeout = 60;
+    private static final int EventWaitTimeout = 120;
 
     private final Observer<byte[]> stdIn;
 
