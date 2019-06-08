@@ -7,9 +7,10 @@ url = sys.argv[2]
 
 buf = []
 
+skipped = 0
 allow_process = False
 
-with open('last', 'r') as f:
+with open('last', 'w+') as f:
     try:
         last = f.read()
     except:
@@ -33,11 +34,13 @@ def process_line(line):
         hash = after_hash[:40]
         global last
         global allow_process
+        global skipped
 
         if (allow_process == False):
             if (hash == last):
                 allow_process = True
-            print('skip: ' + hash)
+                print('Skipped ' + str(skipped))
+            skipped += 1
             return
 
         print(hash)

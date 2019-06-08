@@ -28,9 +28,9 @@ public class Importer {
     }
 
     public Single<List<String>> importTorrents(List<String> hash) {
-        return Observable.fromIterable(hash).flatMap(h -> importTorrent(h)
-                .toObservable(), Runner.WebtorrConcurency)
-                .onErrorResumeNext(Observable.empty())
+
+        return Observable.fromIterable(hash)
+                .flatMap(h -> importTorrent(h).toObservable().onErrorResumeNext(Observable.empty()), Runner.WebtorrConcurency)
                 .toList();
     }
 }
