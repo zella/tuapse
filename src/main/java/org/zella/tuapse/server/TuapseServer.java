@@ -1,5 +1,6 @@
 package org.zella.tuapse.server;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
@@ -7,10 +8,12 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.core.http.HttpServer;
 import io.vertx.reactivex.ext.web.Router;
+import io.vertx.reactivex.ext.web.RoutingContext;
 import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.ipfs.P2pInterface;
@@ -32,9 +35,11 @@ public class TuapseServer {
     private AtomicReference<P2pInterface> ipfs = new AtomicReference<>(new IpfsDisabled());
 
     private final Index index;
+    private final Importer importer;
 
-    public TuapseServer(Index index) {
+    public TuapseServer(Index index, Importer importer) {
         this.index = index;
+        this.importer = importer;
     }
 
     public void ipfsUpdate(P2pInterface search) {
@@ -48,6 +53,12 @@ public class TuapseServer {
         router.get().handler(StaticHandler.create());
         router.get("/").handler(ctx -> ctx.reroute("/index.html"));
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
+        router.post("/import").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
+        }).flatMapCompletable(hashes -> importer.importTorrents(hashes).subscribeOn(Schedulers.io()))
+                .subscribe(() -> ctx.response().end("ok"), e -> {
+                    logger.error("Error", e);
+                    ctx.fail(e);
+                }));
         router.get("/api/v1/p2pMeta").handler(ctx -> ipfs.get().getPeers()
                 .subscribe(meta -> ctx.response().end(Json.mapper.writeValueAsString(meta)), e -> {
                     logger.error("Error", e);
@@ -88,6 +99,14 @@ public class TuapseServer {
         return vertx.createHttpServer().
                 requestHandler(router).rxListen(Port);
 //                .doOnSubscribe(d -> logger.info("Server started at " + Port + " port"));
+    }
+
+    private <T> Single<T> readBody(RoutingContext body, Class<T> valueType) {
+        return Single.fromCallable(() -> Json.mapper.readValue(body.getBodyAsString(), valueType));
+    }
+
+    private <T> Single<T> readBody(RoutingContext body, TypeReference<T> type) {
+        return Single.fromCallable(() -> Json.mapper.readValue(body.getBodyAsString(), type));
     }
 
 }

@@ -7,6 +7,7 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
@@ -24,10 +25,11 @@ public class Runner {
 
     private static final Logger logger = LoggerFactory.getLogger(Runner.class);
 
-    private static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "3"));
+    public static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "3"));
     private static final String IndexType = (System.getenv().getOrDefault("INDEX_TYPE", "EMBEDDED"));
 
     public static void main(String[] args) {
+
 
         final Index es;
         switch (IndexType) {
@@ -56,6 +58,8 @@ public class Runner {
         }
 
 
+        var importer = new Importer(es);
+
         //TODO disable env?
         //TODO restart spider if no torrent more that 5-10 min
         Subprocess.spider()
@@ -75,7 +79,7 @@ public class Runner {
                 .takeWhile(s -> es.isSpaceAllowed())
                 .subscribe(s -> logger.info("Inserted: " + s));
 
-        var server = new TuapseServer(es);
+        var server = new TuapseServer(es, importer);
 
         Single.fromCallable(Subprocess::ipfsRoom).flatMapCompletable(ipfs -> {
             server.ipfsUpdate(ipfs);
