@@ -9,6 +9,7 @@ import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.core.http.HttpServer;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.handler.BodyHandler;
 import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
@@ -51,11 +52,13 @@ public class TuapseServer {
 
         Router router = Router.router(vertx);
         router.get().handler(StaticHandler.create());
+        router.post().handler(BodyHandler.create());
         router.get("/").handler(ctx -> ctx.reroute("/index.html"));
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
         router.post("/import").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
-        }).flatMapCompletable(hashes -> importer.importTorrents(hashes).subscribeOn(Schedulers.io()))
-                .subscribe(() -> ctx.response().end("ok"), e -> {
+        }).doOnSuccess(h -> logger.debug(h.toString()))
+                .flatMap(hashes -> importer.importTorrents(hashes).subscribeOn(Schedulers.io()))
+                .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
                 }));

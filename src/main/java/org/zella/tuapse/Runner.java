@@ -75,6 +75,7 @@ public class Runner {
                                 .onErrorResumeNext(Flowable.empty())
                         , WebtorrConcurency)
                 .timeout(30, TimeUnit.MINUTES) //restart spider if no insertion long time
+                .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
                 .subscribeOn(Schedulers.io())
                 .takeWhile(s -> es.isSpaceAllowed())
                 .subscribe(s -> logger.info("Inserted: " + s));

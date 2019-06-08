@@ -1,20 +1,54 @@
 import sys
 import requests
-import time
+import json
 
 file = sys.argv[1]
 url = sys.argv[2]
 
+buf = []
+
+allow_process = False
+
+with open('last', 'r') as f:
+    try:
+        last = f.read()
+    except:
+        last = ''
+
+print('Last processed: ' + last)
+
+if (last == ''):
+    allow_process = True
+else:
+    allow_process = False
+
+print('Allow process ' + str(allow_process))
+
 
 def process_line(line):
     index = line.find('hash="')
+
     if index != -1:
         after_hash = line[index + 6:]
         hash = after_hash[:40]
+        global last
+        global allow_process
+
+        if (allow_process == False):
+            if (hash == last):
+                allow_process = True
+            print('skip: ' + hash)
+            return
+
         print(hash)
-        r = requests.post(url, json=[hash])
-        print(r.text)
-        time.sleep(0.1)
+        buf.append(hash)
+        if (len(buf) == 8):
+            r = requests.post(url, json=buf)
+            print(r.text)
+            buf.clear()
+
+        with open('last', 'w') as f:
+            f.write(hash)
 
 
 with open(file) as infile:

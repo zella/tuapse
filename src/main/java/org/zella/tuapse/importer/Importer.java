@@ -27,7 +27,10 @@ public class Importer {
                 .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)).doOnSuccess(s -> logger.info("Imported: " + s)));
     }
 
-    public Completable importTorrents(List<String> hash) {
-        return Observable.fromIterable(hash).flatMap(h -> importTorrent(h).toObservable(), Runner.WebtorrConcurency).ignoreElements();
+    public Single<List<String>> importTorrents(List<String> hash) {
+        return Observable.fromIterable(hash).flatMap(h -> importTorrent(h)
+                .toObservable(), Runner.WebtorrConcurency)
+                .onErrorResumeNext(Observable.empty())
+                .toList();
     }
 }
