@@ -1,6 +1,5 @@
 package org.zella.tuapse.model.es;
 
-@Deprecated
 public class Highlight {
 
     public int index;

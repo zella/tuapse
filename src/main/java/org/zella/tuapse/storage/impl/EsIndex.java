@@ -18,6 +18,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.zella.tuapse.model.es.FoundTorrent;
+import org.zella.tuapse.model.es.Highlight;
 import org.zella.tuapse.model.es.IndexMeta;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.providers.Json;
@@ -115,12 +116,13 @@ public class EsIndex extends AbstractIndex {
                 logger.debug(hit.getSourceAsString());
                 logger.debug("Highlights:");
                 Map<String, HighlightField> highlightFields = hit.getHighlightFields();
-                var highlights = new ArrayList<String>();
+                var highlights = new ArrayList<Highlight>();
                 HighlightField highlight = highlightFields.get("files.path");
                 if (highlight != null) {
                     Text[] fragments = highlight.fragments();
                     for (Text f : fragments) {
-                        highlights.add(f.string());
+                        //TODO unimplemented
+                        highlights.add(Highlight.create(-1, f.string()));
                         logger.debug(f.string());
                     }
                 }

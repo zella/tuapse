@@ -16,6 +16,7 @@ import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.zella.tuapse.model.es.FoundTorrent;
+import org.zella.tuapse.model.es.Highlight;
 import org.zella.tuapse.model.es.IndexMeta;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
@@ -128,7 +129,6 @@ public class LuceneIndex extends AbstractIndex {
     @Override
     public synchronized List<FoundTorrent> search(String what, int pageSize) {
         try {
-            //TODO cant share directory!
             Directory storageDir = FSDirectory.open(dir);
             IndexReader reader = DirectoryReader.open(storageDir);
             IndexSearcher searcher = new IndexSearcher(reader);
@@ -149,27 +149,38 @@ public class LuceneIndex extends AbstractIndex {
                 var infoHash = doc.get(FIELD_INFO_HASH);
                 var name = doc.get(FIELD_NAME);
 
-                var sortedPaths = Arrays.asList(doc.getValues(FIELD_FILE)).stream()
+                var sortedPaths = Arrays.stream(doc.getValues(FIELD_FILE))
                         .sorted(Comparator.comparing(f -> f)).collect(Collectors.toList());
 
+                //<Sorting position, Path>
                 Map<Integer, String> filesPath = new HashMap<>();
                 for (int i = 0; i < sortedPaths.size(); i++) {
                     var path = sortedPaths.get(i);
                     filesPath.put(i, path);
                 }
 
-                var highlights = new ArrayList<String>();
+                var highlightsByPath = new HashMap<String, String>();
                 filesPath.forEach((i, path) -> {
                     var highlight = getHighlightedField(query, FIELD_FILE, path);
                     if (highlight != null)
-                        highlights.add(highlight);
+                        //change it if change Formatter
+                        highlightsByPath.put(highlight.replace("<B>", "").replace("</B>", ""), highlight);
                 });
+
 
                 List<FileMeta> filesMeta = Json.mapper.readValue(doc.get(FIELD_FILES), new TypeReference<List<FileMeta>>() {
                 });
 
                 var files = filesMeta.stream().map(m -> TFile.create(Math.toIntExact(m.n), filesPath.get(m.i), m.l))
                         .collect(Collectors.toList());
+
+                var highlights = new ArrayList<Highlight>();
+                filesMeta.forEach(m -> {
+                    String path = filesPath.get(m.i);
+                    var highlight = highlightsByPath.get(path);
+                    if (highlight != null)
+                        highlights.add(Highlight.create(m.n,highlight));
+                });
 
                 var torrent = Torrent.create(name, infoHash, files);
 
@@ -186,12 +197,14 @@ public class LuceneIndex extends AbstractIndex {
     }
 
     static class FileMeta {
+        //sorting position
         public int i;
+        //index in torrent
         public int n;
         public long l;
 
-        public FileMeta(int i, int index, long length) {
-            this.i = i;
+        public FileMeta(int sortingPosition, int index, long length) {
+            this.i = sortingPosition;
             this.n = index;
             this.l = length;
         }

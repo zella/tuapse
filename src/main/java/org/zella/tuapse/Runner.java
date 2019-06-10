@@ -15,6 +15,7 @@ import org.zella.tuapse.server.TuapseServer;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.storage.impl.EsIndex;
 import org.zella.tuapse.storage.impl.LuceneIndex;
+import org.zella.tuapse.storage.impl.fake.MockEsSearch;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.nio.file.Paths;
@@ -44,6 +45,9 @@ public class Runner {
             case "ELASTICSEARCH":
                 es = new EsIndex();
                 break;
+            case "MOCK":
+                es = new MockEsSearch();
+                break;
             default:
                 es = null;
                 System.err.println("Wrong index type");
@@ -60,8 +64,6 @@ public class Runner {
 
         var importer = new Importer(es);
 
-        //TODO disable env?
-        //TODO restart spider if no torrent more that 5-10 min
         Subprocess.spider()
                 .retry()
                 //TODO we should have large buffer and stop spider if buffer full until its free

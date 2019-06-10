@@ -20,7 +20,7 @@
     <div class="row valign-wrapper">
         <div class="col s2">Peers: <span id="peersCount">0</span></div>
         <div class="col s4">Torrents count: <span id="torrentsCount">0</span></div>
-        <div class="col s6">Summary torrent size: <span id="torrentsSize">0</span></div>
+        <div class="col s6">Index size: <span id="torrentsSize">0</span></div>
     </div>
     <div class="row valign-wrapper">
         <div class="col s9"><input id="searchText" class="input" type="text" placeholder="What want to find"></div>
@@ -50,7 +50,7 @@
         {{#if highlights}}
         <ul class="collection">
             {{#each highlights}}
-            <li class="collection-item">{{{this}}}</li>
+            <li class="collection-item">{{{this.path}}}</li>
             {{/each}}
         </ul>
         {{/if}}

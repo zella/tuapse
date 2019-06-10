@@ -48,6 +48,15 @@ public class TestCase {
         assertThat(search1.size()).isEqualTo(1);
         assertThat(search1.get(0).highlights.size()).isEqualTo(3);
 
+        assertThat(search1.get(0).highlights.get(0).index).isEqualTo(8);
+        assertThat(search1.get(0).highlights.get(1).index).isEqualTo(0);
+        assertThat(search1.get(0).highlights.get(2).index).isEqualTo(1);
+
+        //test highlight index
+        assertThat(search1.get(0).highlights.get(0).path).isEqualTo("/music/<B>ДДТ</B>/в последнюю осень.mp3");
+        assertThat(search1.get(0).highlights.get(1).path).isEqualTo("/music/<B>ДДТ</B>/осень.mp3");
+        assertThat(search1.get(0).highlights.get(2).path).isEqualTo("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/<B>ДДТ</B>/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd ");
+
         var search2 = es.search("полковник");
         assertThat(search2.size()).isEqualTo(1);
         assertThat(search2.get(0).highlights.size()).isEqualTo(1);

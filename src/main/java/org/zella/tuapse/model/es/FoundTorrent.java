@@ -6,13 +6,13 @@ import java.util.List;
 
 public class FoundTorrent {
     public Torrent torrent;
-    public List<String> highlights;
+    public List<Highlight> highlights;
     public float score;
 
     public FoundTorrent() {
     }
 
-    public static FoundTorrent create(Torrent t, List<String> highlights, float score){
+    public static FoundTorrent create(Torrent t, List<Highlight> highlights, float score){
         FoundTorrent f = new FoundTorrent();
         f.torrent = t;
         f.highlights = highlights;
