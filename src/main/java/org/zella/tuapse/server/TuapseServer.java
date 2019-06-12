@@ -15,6 +15,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.importer.Importer;
+import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.ipfs.P2pInterface;
@@ -55,9 +56,16 @@ public class TuapseServer {
         router.post().handler(BodyHandler.create());
         router.get("/").handler(ctx -> ctx.reroute("/index.html"));
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
-        router.post("/import").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
+        router.post("/api/v1/import").handler(ctx -> readBody(ctx, new TypeReference<List<Torrent>>() {
         }).doOnSuccess(h -> logger.debug(h.toString()))
-                .flatMap(hashes -> importer.importTorrents(hashes).subscribeOn(Schedulers.io()))
+                .flatMap(torrents -> importer.importTorrents(torrents).subscribeOn(Schedulers.io()))
+                .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
+                    logger.error("Error", e);
+                    ctx.fail(e);
+                }));
+        router.post("/api/v1/evalTorrents").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
+        }).doOnSuccess(h -> logger.debug(h.toString()))
+                .flatMap(hashes -> importer.evalTorrentsData(hashes).subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);

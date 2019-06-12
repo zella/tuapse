@@ -4,10 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.*;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
@@ -68,6 +65,7 @@ public class LuceneIndex extends AbstractIndex {
             IndexWriter writter = new IndexWriter(storageDir, indexWriterConfig);
 
             var doc = new Document();
+
             doc.add(new StringField(FIELD_INFO_HASH, t.infoHash, Field.Store.YES));
             doc.add(new TextField(FIELD_NAME, t.name, Field.Store.YES));
 
@@ -87,7 +85,7 @@ public class LuceneIndex extends AbstractIndex {
 
             doc.add(new StoredField(FIELD_FILES, Json.mapper.writeValueAsString(metas)));
 
-            writter.addDocument(doc);
+            writter.updateDocument(new Term(FIELD_INFO_HASH, t.infoHash), doc);
             writter.commit();
             writter.close();
             return t.infoHash;
@@ -179,7 +177,7 @@ public class LuceneIndex extends AbstractIndex {
                     String path = filesPath.get(m.i);
                     var highlight = highlightsByPath.get(path);
                     if (highlight != null)
-                        highlights.add(Highlight.create(m.n,highlight));
+                        highlights.add(Highlight.create(m.n, highlight));
                 });
 
                 var torrent = Torrent.create(name, infoHash, files);

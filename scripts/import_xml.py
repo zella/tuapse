@@ -3,7 +3,8 @@ import requests
 import json
 
 file = sys.argv[1]
-url = sys.argv[2]
+urlEval = sys.argv[2]
+urlImport = sys.argv[2]
 
 buf = []
 
@@ -46,12 +47,15 @@ def process_line(line):
         print(hash)
         buf.append(hash)
         if (len(buf) == 8):
-            r = requests.post(url, json=buf)
-            print(r.text)
+            r1 = requests.post(urlEval, json=buf)
+            torrentsData = r1.json()
+            print("Evaluated: " + len(torrentsData))
+            r2 = requests.post(urlImport, json=torrentsData)
+            imported = r2.json(())
             buf.clear()
-
-        with open('last', 'w') as f:
-            f.write(hash)
+            if len(imported) > 0:
+                with open('last', 'w') as f:
+                    f.write(imported[-1])
 
 
 with open(file) as infile:
