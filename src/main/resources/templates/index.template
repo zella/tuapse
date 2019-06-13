@@ -18,28 +18,6 @@
 
 <body>
 
-<template id="torrent-template-backup">
-    <li class="collection-item">
-        <div class="row">
-            <div class="col s12 m8"><b>{{torrent.name}}</b></div>
-            <div class="col s6 m2">
-                <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
-                    file</a>
-            </div>
-            <div class="col s6 m2">
-                <a class="waves-effect waves-light btn-small" href="{{href}}">Magnet</a>
-            </div>
-        </div>
-        {{#if highlights}}
-        <ul class="collection">
-            {{#each highlights}}
-            <li class="collection-item">{{{this.path}}}</li>
-            {{/each}}
-        </ul>
-        {{/if}}
-    </li>
-</template>
-
 <template id="torrent-template">
     <li class="collection-item">
         <div class="row">
@@ -68,15 +46,14 @@
                                         kodi</a>
                                 </li>
                                 <li class="collection-item">
-                                    <a id="download_direct{{../torrent.infoHash}}{{{this.index}}}" href="#">Direct
+
+                                    <a id="download_direct{{../torrent.infoHash}}{{{this.index}}}"
+                                       href="[TUAPSE_PLAY_ORIGIN]/api/v1/fetchFile?hash={{../torrent.infoHash}}&index={{this.index}}" download>Direct
                                         download</a>
                                 </li>
                             </ul>
                         </div>
 
-                    </div>
-                    <div class="modal-footer">
-                        <a href="#" class="modal-close waves-effect waves-green btn-flat">Agree</a>
                     </div>
                 </div>
             </li>
@@ -155,31 +132,32 @@
 
                         torrent.highlights.forEach(function (file) {
                             //play, download etc links
-                            //TODO
-                            console.log('Setup footer')
                             console.log(file)
                             $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
                                 // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
-                               // alert(file.index)
-                               // console.log(file.index)
-                                   $.ajax({
-                                url: 'Ajax.ashx',
-                                type: 'POST',
-                                data: JSON.stringify( { hash: torrent.torrent.infoHash, index: file.index, streaming: 'xbmc' }),
-                                contentType: 'application/json; charset=utf-8',
-                                dataType: 'json',
-                                async: false,
-                                success: function(data) {
-
-                                    M.toast({html: 'Playing...'}) //TODO file name only
-                                }
+                                // alert(file.index)
+                                // console.log(file.index)
+                                $.ajax({
+                                    url: '[TUAPSE_PLAY_ORIGIN]/api/v1/play',
+                                    type: 'POST',
+                                    crossDomain: true,
+                                    data: JSON.stringify({
+                                        hash: torrent.torrent.infoHash,
+                                        index: file.index,
+                                        streaming: 'xbmc'
+                                    }),
+                                    contentType: 'application/json; charset=utf-8',
+                                    dataType: 'json',
+                                    async: false,
+                                    success: function (data) {
+                                        M.toast({html: 'Playing on kodi...'}) //TODO file name only
+                                    }
+                                });
                             });
-                            });
-                            $("#download_direct" + torrent.torrent.infoHash + file.index).click(function () {
-                                // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
-                                alert(file.index)
-                                console.log(file.index)
-                            });
+                            // $("#download_direct" + torrent.torrent.infoHash + file.index).click(function () {
+                            //     alert(file.index)
+                            //     console.log(file.index)
+                            // });
 
                         })
                     });

@@ -28,7 +28,6 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.apache.lucene" % "lucene-highlighter" % "8.0.0",
     libraryDependencies += "io.vertx" % "vertx-rx-java2" % "3.7.1",
     libraryDependencies += "io.vertx" % "vertx-web" % "3.7.1",
-    libraryDependencies += "io.vertx" % "vertx-web-templ-handlebars" % "3.7.1",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
     libraryDependencies += "com.google.guava" % "guava" % "27.1-jre",
     libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.9",

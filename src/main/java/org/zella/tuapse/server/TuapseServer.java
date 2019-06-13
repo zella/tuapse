@@ -10,17 +10,17 @@ import io.vertx.reactivex.core.http.HttpServer;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import io.vertx.reactivex.ext.web.handler.BodyHandler;
-import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.importer.Importer;
-import org.zella.tuapse.model.torrent.Torrent;
-import org.zella.tuapse.storage.AbstractIndex;
-import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
+import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.storage.AbstractIndex;
+import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
@@ -33,6 +33,7 @@ public class TuapseServer {
 
     private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9257"));
     private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "60"));
+    private static final String TuapsePlayOrigin = (System.getenv().getOrDefault("TUAPSE_PLAY_ORIGIN", "N/A"));
 
     private AtomicReference<P2pInterface> ipfs = new AtomicReference<>(new IpfsDisabled());
 
@@ -50,11 +51,37 @@ public class TuapseServer {
 
     public Single<HttpServer> listen() {
         var vertx = Vertx.vertx();
+//        WebClient client = WebClient.create(vertx);
+//        ThymeleafTemplateEngine templates = ThymeleafTemplateEngine.create(vertx);
 
         Router router = Router.router(vertx);
-        router.get().handler(StaticHandler.create());
+//        router.get().handler(StaticHandler.create());
         router.post().handler(BodyHandler.create());
-        router.get("/").handler(ctx -> ctx.reroute("/index.html"));
+//        router.get("/").handler(ctx -> ctx.reroute("/index.html"));
+//        router.get("/").handler(ctx -> {
+//            //TODO conditional remove from index.tempalte
+//            Map<String, Object> data = Map.of("TUAPSE_PLAY_ORIGIN", TuapsePlayOrigin, "TUAPSE_PLAY_ORIGIN2", TuapsePlayOrigin);
+//            templates.render(data, "templates/index.template", res -> {
+//                if (res.succeeded()) {
+//                    ctx.response().end(res.result());
+//                } else {
+//                    logger.error("Error", res.cause());
+//                    ctx.fail(res.cause());
+//                }
+//            });
+//        });
+        router.get("/").handler(ctx -> {
+            //TODO ui different non java project
+            Single.fromCallable(() -> IOUtils.toString(this.getClass().getResourceAsStream("/templates/index.template"),
+                    "UTF-8"))
+                    .map(template -> template.replace("[TUAPSE_PLAY_ORIGIN]", TuapsePlayOrigin))
+                    .subscribeOn(Schedulers.io())
+                    .subscribe(res -> ctx.response().end(res),
+                            e -> {
+                                logger.error("Error", e);
+                                ctx.fail(e);
+                            });
+        });
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
         router.post("/api/v1/import").handler(ctx -> readBody(ctx, new TypeReference<List<Torrent>>() {
         }).doOnSuccess(h -> logger.debug(h.toString()))
@@ -107,9 +134,29 @@ public class TuapseServer {
 
 
         });
+//        router.post("/api/v1/play").handler(ctx -> {
+//            client.post(TuapsePlayOrigin + "/api/v1/play")
+//                    .rxSendBuffer(ctx.getBody())
+//                    .subscribeOn(Schedulers.io())
+//                    .subscribe(resp -> ctx.response().end(resp.body()), e -> {
+//                        logger.error("Error", e);
+//                        ctx.response().end();
+//                    });
+//        });
+//        router.get("/api/v1/fetchFile").handler(ctx -> {
+//
+//            var params = ctx.request().params();
+//            HttpRequest<Buffer> req = client.get(TuapsePlayOrigin + "/api/v1/fetchFile");
+//            params.forEach(kv -> req.addQueryParam(kv.getKey(), kv.getValue()));
+//            req.rxSend()
+//                    .subscribeOn(Schedulers.io())
+//                    .subscribe(resp -> ctx.response().end(resp.body()), e -> {
+//                        logger.error("Error", e);
+//                        ctx.response().end();
+//                    });
+//        });
         return vertx.createHttpServer().
                 requestHandler(router).rxListen(Port);
-//                .doOnSubscribe(d -> logger.info("Server started at " + Port + " port"));
     }
 
     private <T> Single<T> readBody(RoutingContext body, Class<T> valueType) {
