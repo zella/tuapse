@@ -18,7 +18,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8",
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.8",
     libraryDependencies += "commons-io" % "commons-io" % "2.6",
-      //es 7.1.1 uses lucene 8.0.0, some problem use latest lucene on classpath TODO
+    //es 7.1.1 uses lucene 8.0.0, some problem use latest lucene on classpath TODO
     libraryDependencies += "org.elasticsearch.client" % "transport" % "7.1.1",
     libraryDependencies += "org.elasticsearch.client" % "elasticsearch-rest-high-level-client" % "7.1.1",
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "8.1.1",
@@ -28,6 +28,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.apache.lucene" % "lucene-highlighter" % "8.0.0",
     libraryDependencies += "io.vertx" % "vertx-rx-java2" % "3.7.1",
     libraryDependencies += "io.vertx" % "vertx-web" % "3.7.1",
+    libraryDependencies += "io.vertx" % "vertx-web-templ-handlebars" % "3.7.1",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
     libraryDependencies += "com.google.guava" % "guava" % "27.1-jre",
     libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.9",
@@ -39,11 +40,11 @@ lazy val root = (project in file("."))
   )
 
 assemblyMergeStrategy in assembly := {
-    case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
-    case x if x.contains("libjnidispatch.so") => MergeStrategy.last
-    case x =>
-        val oldStrategy = (assemblyMergeStrategy in assembly).value
-        oldStrategy(x)
+  case x if x.contains("io.netty.versions.properties") => MergeStrategy.discard
+  case x if x.contains("libjnidispatch.so") => MergeStrategy.last
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
 }
 
 mainClass in assembly := Some("org.zella.tuapse.Runner")

@@ -1,18 +1,92 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/html">
+<html>
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tuapse torrent search</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
-
 </head>
 
+<script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+        crossorigin="anonymous"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
+
+
 <body>
+
+<template id="torrent-template-backup">
+    <li class="collection-item">
+        <div class="row">
+            <div class="col s12 m8"><b>{{torrent.name}}</b></div>
+            <div class="col s6 m2">
+                <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
+                    file</a>
+            </div>
+            <div class="col s6 m2">
+                <a class="waves-effect waves-light btn-small" href="{{href}}">Magnet</a>
+            </div>
+        </div>
+        {{#if highlights}}
+        <ul class="collection">
+            {{#each highlights}}
+            <li class="collection-item">{{{this.path}}}</li>
+            {{/each}}
+        </ul>
+        {{/if}}
+    </li>
+</template>
+
+<template id="torrent-template">
+    <li class="collection-item">
+        <div class="row">
+            <div class="col s12 m8"><b>{{torrent.name}}</b></div>
+            <div class="col s6 m2">
+                <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
+                    file</a>
+            </div>
+            <div class="col s6 m2">
+                <a class="waves-effect waves-light btn-small" href="{{href}}">Magnet</a>
+            </div>
+        </div>
+        {{#if highlights}}
+        <ul class="collection">
+            {{#each highlights}}
+            <li class="collection-item ">
+                <a class="modal-trigger" href="#{{{this.path}}}">{{{this.path}}}</a>
+                <div id="{{{this.path}}}" class="modal bottom-sheet">
+                    <div class="modal-content">
+
+                        <div class="modal-content">
+                            <h3 class="header">Select option</h3>
+                            <ul class="collection">
+                                <li class="collection-item">
+                                    <a id="play_kodi{{../torrent.infoHash}}{{{this.index}}}" href="#">Play on
+                                        kodi</a>
+                                </li>
+                                <li class="collection-item">
+                                    <a id="download_direct{{../torrent.infoHash}}{{{this.index}}}" href="#">Direct
+                                        download</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="modal-close waves-effect waves-green btn-flat">Agree</a>
+                    </div>
+                </div>
+            </li>
+
+            {{/each}}
+        </ul>
+        {{/if}}
+    </li>
+</template>
+
 <div>
     <div id="progress" class="progress">
         <div class="indeterminate"></div>
@@ -35,136 +109,151 @@
 
 </div>
 
-<template id="torrent-template">
-    <li class="collection-item">
-        <div class="row">
-            <div class="col s12 m8"><b>{{torrent.name}}</b></div>
-            <div class="col s6 m2">
-                <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
-                    file</a>
-            </div>
-            <div class="col s6 m2">
-                <a class="waves-effect waves-light btn-small" href="{{href}}">Magnet</a>
-            </div>
-        </div>
-        {{#if highlights}}
-        <ul class="collection">
-            {{#each highlights}}
-            <li class="collection-item">{{{this.path}}}</li>
-            {{/each}}
-        </ul>
-        {{/if}}
-    </li>
-</template>
-
-<script type='text/javascript'>
-
-    var searchBtn = document.getElementById("searchBtn");
-
-    document.getElementById("searchText")
-        .addEventListener("keyup", function (event) {
-            event.preventDefault();
-            if (event.keyCode === 13) {
-                searchBtn.click();
-            }
-        });
-
-    var progressEl = document.getElementById('progress');
-    progressEl.style.visibility = 'hidden';
-    var torrentsEl = document.getElementById('torrentsFound');
-    var template = document.getElementById('torrent-template').innerHTML;
-    var rendering = Handlebars.compile(template);
-    searchBtn.onclick = function () {
-        torrentsEl.innerHTML = '';
-        var text = document.getElementById("searchText").value;
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/api/v1/search?text=" + text, true);
-        xhr.onprogress = function () {
-            console.log(xhr.responseText);
-            try {
-                var torrents = JSON.parse(xhr.responseText);
-                torrents.forEach(function (torrent) {
-
-                    torrent.fileBtnId = torrent.torrent.infoHash + "_f";
-                    torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
-                    torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
-                    torrent.fileName = torrent.torrent.infoHash + ".torrent";
-
-                    var li = document.createElement('li'); // is a node
-                    li.innerHTML = rendering(torrent);
-                    torrentsEl.appendChild(li);
-                });
-            }
-            catch (e) {
-                console.log(e);
-            }
-        };
-
-        xhr.onloadstart = function () {
-            progressEl.style.visibility = 'visible'
-        };
-        xhr.onloadend = function () {
-            progressEl.style.visibility = 'hidden'
-        };
-
-        xhr.send();
-    };
-
-    function updP2pMeta() {
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                var meta = JSON.parse(xhr.responseText);
-                document.getElementById('peersCount').innerHTML = meta.count;
-            }
-        };
-        xhr.open('GET', '/api/v1/p2pMeta', true);
-        xhr.send();
-    }
-
-    function updIndexMeta() {
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                var meta = JSON.parse(xhr.responseText);
-                document.getElementById('torrentsCount').innerHTML = meta.docsCount;
-                document.getElementById('torrentsSize').innerHTML = humanFileSize(meta.indexSize, false);
-            }
-        };
-        xhr.open('GET', '/api/v1/indexMeta', true);
-        xhr.send();
-    }
-
-    function humanFileSize(bytes, si) {
-        var thresh = si ? 1000 : 1024;
-        if (Math.abs(bytes) < thresh) {
-            return bytes + ' B';
-        }
-        var units = si
-            ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-            : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-        var u = -1;
-        do {
-            bytes /= thresh;
-            ++u;
-        } while (Math.abs(bytes) >= thresh && u < units.length - 1);
-        return bytes.toFixed(1) + ' ' + units[u];
-    }
-
-    setInterval(function () {
-        updP2pMeta();
-    }, 60000); //1 min
-
-    setInterval(function () {
-        updIndexMeta();
-    }, 60000); //1 min
-
-    updIndexMeta();
-    updP2pMeta();
-
-</script>
-
-
 </body>
+
+
+<script>
+
+    $(document).ready(function () {
+        // $('.modal').modal();
+        var searchBtn = document.getElementById("searchBtn");
+
+        document.getElementById("searchText")
+            .addEventListener("keyup", function (event) {
+                event.preventDefault();
+                if (event.keyCode === 13) {
+                    searchBtn.click();
+                }
+            });
+
+        var progressEl = document.getElementById('progress');
+        progressEl.style.visibility = 'hidden';
+        var torrentsEl = document.getElementById('torrentsFound');
+        var template = document.getElementById('torrent-template').innerHTML;
+        var rendering = Handlebars.compile(template);
+        searchBtn.onclick = function () {
+            torrentsEl.innerHTML = '';
+            var text = document.getElementById("searchText").value;
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", "/api/v1/search?text=" + text, true);
+            xhr.onprogress = function () {
+                console.log(xhr.responseText);
+                try {
+                    var torrents = JSON.parse(xhr.responseText);
+                    torrents.forEach(function (torrent) {
+
+                        torrent.fileBtnId = torrent.torrent.infoHash + "_f";
+                        torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
+                        torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
+                        torrent.fileName = torrent.torrent.infoHash + ".torrent";
+
+                        console.log(torrent)
+
+                        var li = document.createElement('li'); // is a node
+                        li.innerHTML = rendering(torrent);
+                        torrentsEl.appendChild(li);
+
+                        torrent.highlights.forEach(function (file) {
+                            //play, download etc links
+                            //TODO
+                            console.log('Setup footer')
+                            console.log(file)
+                            $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
+                                // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
+                               // alert(file.index)
+                               // console.log(file.index)
+                                   $.ajax({
+                                url: 'Ajax.ashx',
+                                type: 'POST',
+                                data: JSON.stringify( { hash: torrent.torrent.infoHash, index: file.index, streaming: 'xbmc' }),
+                                contentType: 'application/json; charset=utf-8',
+                                dataType: 'json',
+                                async: false,
+                                success: function(data) {
+
+                                    M.toast({html: 'Playing...'}) //TODO file name only
+                                }
+                            });
+                            });
+                            $("#download_direct" + torrent.torrent.infoHash + file.index).click(function () {
+                                // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
+                                alert(file.index)
+                                console.log(file.index)
+                            });
+
+                        })
+                    });
+                }
+                catch (e) {
+                    console.log(e);
+                }
+
+
+                $('.modal').modal();
+            };
+
+            xhr.onloadstart = function () {
+                progressEl.style.visibility = 'visible'
+            };
+            xhr.onloadend = function () {
+                progressEl.style.visibility = 'hidden'
+            };
+
+            xhr.send();
+        };
+
+        function updP2pMeta() {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    var meta = JSON.parse(xhr.responseText);
+                    document.getElementById('peersCount').innerHTML = meta.count;
+                }
+            };
+            xhr.open('GET', '/api/v1/p2pMeta', true);
+            xhr.send();
+        }
+
+        function updIndexMeta() {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    var meta = JSON.parse(xhr.responseText);
+                    document.getElementById('torrentsCount').innerHTML = meta.docsCount;
+                    document.getElementById('torrentsSize').innerHTML = humanFileSize(meta.indexSize, false);
+                }
+            };
+            xhr.open('GET', '/api/v1/indexMeta', true);
+            xhr.send();
+        }
+
+        function humanFileSize(bytes, si) {
+            var thresh = si ? 1000 : 1024;
+            if (Math.abs(bytes) < thresh) {
+                return bytes + ' B';
+            }
+            var units = si
+                ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+                : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+            var u = -1;
+            do {
+                bytes /= thresh;
+                ++u;
+            } while (Math.abs(bytes) >= thresh && u < units.length - 1);
+            return bytes.toFixed(1) + ' ' + units[u];
+        }
+
+        setInterval(function () {
+            updP2pMeta();
+        }, 60000); //1 min
+
+        setInterval(function () {
+            updIndexMeta();
+        }, 60000); //1 min
+
+        updIndexMeta();
+        updP2pMeta();
+    });
+</script>
 
 </html>
