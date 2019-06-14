@@ -2,6 +2,7 @@ package org.zella.tuapse.storage.impl.fake;
 
 import org.zella.tuapse.model.es.FoundTorrent;
 import org.zella.tuapse.model.es.Highlight;
+import org.zella.tuapse.model.es.IndexMeta;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.Torrent;
 import org.zella.tuapse.storage.impl.EsIndex;
@@ -28,5 +29,15 @@ public class MockEsSearch extends EsIndex {
     @Override
     public void createIndexIfNotExist() {
         //do nothing
+    }
+
+    @Override
+    public IndexMeta indexMeta() {
+        return new IndexMeta(0, 0);
+    }
+
+    @Override
+    public Boolean isSpaceAllowed() {
+        return false;
     }
 }
