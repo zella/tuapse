@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 import json
@@ -52,10 +55,10 @@ def process_line(line):
             r1 = requests.post(urlEval, json=buf)
             torrentsData = r1.json()  # json array of full torrents
             print("Evaluated: " + str(len(torrentsData)))
-
+            print(torrentsData)
             with open(outFile, 'a+') as out:
                 for t in torrentsData:
-                    out.write(str(json.dumps(t)) + os.linesep)
+                    out.write(str(json.dumps(t, ensure_ascii=False)) + os.linesep)
 
             buf.clear()
             if len(torrentsData) > 0:
