@@ -17,8 +17,11 @@ import org.slf4j.LoggerFactory;
 import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
-import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.torrent.StorableTorrent;
+import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.providers.RxUtils;
 import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.subprocess.Subprocess;
@@ -26,13 +29,14 @@ import org.zella.tuapse.subprocess.Subprocess;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class TuapseServer {
 
     private static final Logger logger = LoggerFactory.getLogger(TuapseServer.class);
 
     private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9257"));
-    private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "60"));
+    private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "120"));
     private static final String TuapsePlayOrigin = (System.getenv().getOrDefault("TUAPSE_PLAY_ORIGIN", "N/A"));
 
     private AtomicReference<P2pInterface> ipfs = new AtomicReference<>(new IpfsDisabled());
@@ -83,7 +87,7 @@ public class TuapseServer {
                             });
         });
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
-        router.post("/api/v1/import").handler(ctx -> readBody(ctx, new TypeReference<List<Torrent>>() {
+        router.post("/api/v1/import").handler(ctx -> readBody(ctx, new TypeReference<List<StorableTorrent>>() {
         }).doOnSuccess(h -> logger.debug(h.toString()))
                 .flatMap(torrents -> importer.importTorrents(torrents).subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
@@ -92,7 +96,7 @@ public class TuapseServer {
                 }));
         router.post("/api/v1/evalTorrents").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
         }).doOnSuccess(h -> logger.debug(h.toString()))
-                .flatMap(hashes -> importer.evalTorrentsData(hashes).subscribeOn(Schedulers.io()))
+                .flatMap(hashes -> importer.evalTorrentsData(hashes).toList().subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
@@ -123,7 +127,9 @@ public class TuapseServer {
                     .flatMapObservable(text -> Observable.merge(List.of(
                             Single.fromCallable(() -> index.search(text)).toObservable(),
                             ipfs.get().search(text, AbstractIndex.PageSize))
-                    )).timeout(ReqTimeout, TimeUnit.SECONDS)
+                    ))
+                    .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
+                    .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
                             e -> {
@@ -134,27 +140,35 @@ public class TuapseServer {
 
 
         });
-//        router.post("/api/v1/play").handler(ctx -> {
-//            client.post(TuapsePlayOrigin + "/api/v1/play")
-//                    .rxSendBuffer(ctx.getBody())
-//                    .subscribeOn(Schedulers.io())
-//                    .subscribe(resp -> ctx.response().end(resp.body()), e -> {
-//                        logger.error("Error", e);
-//                        ctx.response().end();
-//                    });
-//        });
-//        router.get("/api/v1/fetchFile").handler(ctx -> {
-//
-//            var params = ctx.request().params();
-//            HttpRequest<Buffer> req = client.get(TuapsePlayOrigin + "/api/v1/fetchFile");
-//            params.forEach(kv -> req.addQueryParam(kv.getKey(), kv.getValue()));
-//            req.rxSend()
-//                    .subscribeOn(Schedulers.io())
-//                    .subscribe(resp -> ctx.response().end(resp.body()), e -> {
-//                        logger.error("Error", e);
-//                        ctx.response().end();
-//                    });
-//        });
+        router.get("/api/v1/search_eval_peers").handler(ctx -> {
+            //chunked response
+            ctx.response().setChunked(true);
+
+            Observable<List<FoundTorrent>> searchO = Single.fromCallable(() -> ctx.queryParams().get("text"))
+                    .flatMapObservable(text -> Observable.merge(List.of(
+                            Single.fromCallable(() -> index.search(text)).toObservable(),
+                            ipfs.get().search(text, AbstractIndex.PageSize))
+                    ))
+                    .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
+                    .subscribeOn(Schedulers.io()).cache();
+
+            //TODO cache peers! and statistical remove?
+            Observable<List<LiveTorrent>> evaluatedO = searchO.map(ts -> ts.stream().map(t -> t.torrent.infoHash).collect(Collectors.toList()))
+                    .flatMapSingle(h -> importer.evalTorrentsData(h)
+                            .subscribeOn(Schedulers.io()).toList());
+
+            Observable.zip(searchO, evaluatedO, FoundTorrent::fillWithPeers)
+                    .subscribeOn(Schedulers.io())
+                    .timeout(ReqTimeout, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
+                    .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
+                            e -> {
+                                logger.error("Error", e);
+                                ctx.response().end();
+                            },
+                            () -> ctx.response().end());
+
+        });
         return vertx.createHttpServer().
                 requestHandler(router).rxListen(Port);
     }

@@ -21,7 +21,7 @@
 <template id="torrent-template">
     <li class="collection-item">
         <div class="row">
-            <div class="col s12 m8"><b>{{torrent.name}}</b></div>
+            <div class="col s12 m8"><b>{{torrent.name}}</b> [Peers: {{torrent.numPeers}}]</div>
             <div class="col s6 m2">
                 <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
                     file</a>
@@ -34,7 +34,10 @@
         <ul class="collection">
             {{#each highlights}}
             <li class="collection-item ">
-                <a class="modal-trigger" href="#{{{this.path}}}">{{{this.path}}}</a>
+                <div class="row">
+                    <a class="modal-trigger col m10" href="#{{this.path}}">{{{this.path}}}</a>
+                    <div class="col m2">Size: {{this.humanSize}}</div>
+                </div>
                 <div id="{{{this.path}}}" class="modal bottom-sheet">
                     <div class="modal-content">
 
@@ -90,7 +93,7 @@
 
 
 <script>
-
+    var searchRequest;
     $(document).ready(function () {
         // $('.modal').modal();
         var searchBtn = document.getElementById("searchBtn");
@@ -109,10 +112,13 @@
         var template = document.getElementById('torrent-template').innerHTML;
         var rendering = Handlebars.compile(template);
         searchBtn.onclick = function () {
+            if (searchRequest)
+                searchRequest.abort();
             torrentsEl.innerHTML = '';
             var text = document.getElementById("searchText").value;
             var xhr = new XMLHttpRequest();
-            xhr.open("GET", "/api/v1/search?text=" + text, true);
+            searchRequest = xhr;
+            xhr.open("GET", "/api/v1/search_eval_peers?text=" + text, true);
             xhr.onprogress = function () {
                 console.log(xhr.responseText);
                 try {
@@ -124,15 +130,26 @@
                         torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
                         torrent.fileName = torrent.torrent.infoHash + ".torrent";
 
-                        console.log(torrent)
+                        console.log(torrent);
+
+                        highlights = torrent.highlights.map(function (file) {
+                            file.humanSize = humanFileSize(file.length, false);
+                            return file;
+                        });
+
+                        torrent.highlights = highlights;
 
                         var li = document.createElement('li'); // is a node
                         li.innerHTML = rendering(torrent);
                         torrentsEl.appendChild(li);
 
-                        torrent.highlights.forEach(function (file) {
+
+                        torrent.highlights.map(function (file) {
+                            file.humanSize = humanFileSize(file.length, false);
+                            return file;
+                        }).forEach(function (file) {
                             //play, download etc links
-                            console.log(file)
+                            console.log(file);
                             $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
                                 // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
                                 // alert(file.index)

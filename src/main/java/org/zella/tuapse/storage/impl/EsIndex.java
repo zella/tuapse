@@ -17,10 +17,10 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
-import org.zella.tuapse.model.es.FoundTorrent;
-import org.zella.tuapse.model.es.Highlight;
-import org.zella.tuapse.model.es.IndexMeta;
-import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.index.Highlight;
+import org.zella.tuapse.model.index.IndexMeta;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.storage.AbstractIndex;
 
@@ -45,7 +45,7 @@ public class EsIndex extends AbstractIndex {
             RestClient.builder(
                     new HttpHost(EsHost, EsPort, EsScheme)));
 
-    public String insertTorrent(Torrent t) {
+    public String insertTorrent(StorableTorrent t) {
         try {
             IndexRequest indexRequest = new IndexRequest("torrents")
                     .source(Json.mapper.writeValueAsString(t), XContentType.JSON)
@@ -112,7 +112,7 @@ public class EsIndex extends AbstractIndex {
             logger.debug("Found:");
             for (SearchHit hit : searchHits) {
                 // do something with the SearchHit
-                Torrent torrent = Json.mapper.readValue(hit.getSourceAsString(), Torrent.class);
+                StorableTorrent torrent = Json.mapper.readValue(hit.getSourceAsString(), StorableTorrent.class);
                 logger.debug(hit.getSourceAsString());
                 logger.debug("Highlights:");
                 Map<String, HighlightField> highlightFields = hit.getHighlightFields();
@@ -121,8 +121,8 @@ public class EsIndex extends AbstractIndex {
                 if (highlight != null) {
                     Text[] fragments = highlight.fragments();
                     for (Text f : fragments) {
-                        //TODO unimplemented
-                        highlights.add(Highlight.create(-1, f.string()));
+                        //TODO unimplemented "-1"
+                        highlights.add(Highlight.create(-1, f.string(), -1));
                         logger.debug(f.string());
                     }
                 }

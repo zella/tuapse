@@ -1,8 +1,7 @@
 package org.zella.tuapse.storage;
 
 import org.zella.tuapse.model.torrent.TFile;
-import org.zella.tuapse.model.torrent.Torrent;
-import org.zella.tuapse.storage.impl.EsIndex;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,19 +20,19 @@ public class TestCase {
         var f2 = TFile.create(1, "sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd ", 1000);
         var f3 = TFile.create(8, "/music/ДДТ/в последнюю осень.mp3", 1000);
         var f3a = TFile.create(3, "NO DDT) HERE", 1000);
-        var t1 = Torrent.create("ДДТ дискография", "hash1", List.of(f1, f2, f3, f3a));
+        var t1 = StorableTorrent.create("ДДТ дискография", "hash1", List.of(f1, f2, f3, f3a));
 
         var f4 = TFile.create(0, "/music/БИ 2/01.полковник.mp3", 1000);
-        var t2 = Torrent.create("БИ 2", "hash2", List.of(f4));
+        var t2 = StorableTorrent.create("БИ 2", "hash2", List.of(f4));
 
         var f5 = TFile.create(0, "/films/oscar/Зеленый Слоник.3gp", 1000);
-        var t3 = Torrent.create("Зеленый слоник", "hash3", List.of(f5));
+        var t3 = StorableTorrent.create("Зеленый слоник", "hash3", List.of(f5));
 
         var f6 = TFile.create(0, "/films/good/forest_gamp.avi", 1000);
-        var t4 = Torrent.create("Gamp", "hash4", List.of(f6));
+        var t4 = StorableTorrent.create("Gamp", "hash4", List.of(f6));
 
         var f7 = TFile.create(0, "SOmeFile.lol", 1000);
-        var t5 = Torrent.create("Хроники: терминатор, возвращение легенды", "hash5", List.of(f7));
+        var t5 = StorableTorrent.create("Хроники: терминатор, возвращение легенды", "hash5", List.of(f7));
 
         es.insertTorrent(t1);
         es.insertTorrent(t2);
@@ -82,7 +81,7 @@ public class TestCase {
     }
 
 
-    private static Torrent random() {
+    private static StorableTorrent random() {
 
         var filesCount = ThreadLocalRandom.current().nextInt(199, 200);
         var files = new ArrayList<TFile>();
@@ -93,7 +92,7 @@ public class TestCase {
                     1000));
         }
 
-        return Torrent.create(UUID.randomUUID().toString(), UUID.randomUUID().toString(), files);
+        return StorableTorrent.create(UUID.randomUUID().toString(), UUID.randomUUID().toString(), files);
     }
 
     public static void spaceAllowedCase(Index es, int n) {

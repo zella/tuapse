@@ -1,4 +1,4 @@
-package org.zella.tuapse.model.es;
+package org.zella.tuapse.model.index;
 
 public class IndexMeta {
 

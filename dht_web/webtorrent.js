@@ -13,6 +13,7 @@ client.add(torrentId, {path: dir}, function (torrent) {
 
     const obj = {
         "infoHash": torrent.infoHash,
+        "numPeers": torrent.numPeers,
         "name": torrent.name,
         "files": torrent.files.map(function (f, index) {
             return {

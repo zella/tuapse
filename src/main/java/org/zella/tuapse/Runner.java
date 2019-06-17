@@ -26,7 +26,7 @@ public class Runner {
 
     private static final Logger logger = LoggerFactory.getLogger(Runner.class);
 
-    public static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "3"));
+    public static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "4"));
     private static final String IndexType = (System.getenv().getOrDefault("INDEX_TYPE", "EMBEDDED"));
 
     public static void main(String[] args) {
@@ -81,8 +81,8 @@ public class Runner {
                     .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
                     .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
                     .subscribeOn(Schedulers.io())
-                    .takeWhile(s -> es.isSpaceAllowed())
-                    .subscribe(s -> logger.info("Inserted: " + s));
+                    .takeWhile(s -> es.isSpaceAllowed());
+//                    .subscribe(s -> logger.info("Inserted: " + s));
         }
 
         var server = new TuapseServer(es, importer);

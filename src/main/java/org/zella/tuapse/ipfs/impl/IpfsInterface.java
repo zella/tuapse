@@ -11,13 +11,12 @@ import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.ipfs.P2pInterface;
-import org.zella.tuapse.model.es.FoundTorrent;
+import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.messages.Message;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 import org.zella.tuapse.providers.Json;
-import org.zella.tuapse.providers.RxUtils;
 
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -68,7 +67,7 @@ public class IpfsInterface implements P2pInterface {
         this.stdIn = streams.stdIn();
         this.exit = streams.waitDone();
         this.stdout = streams.stdOut().replay(100, TimeUnit.MILLISECONDS);
-        myPeer = findEvent("[MyPeer]").doOnSuccess(logger::info).cache().subscribeOn(Schedulers.io());
+        myPeer = findEvent("[MyPeer]").doOnSuccess(my -> logger.info("My peer: " + my)).cache().subscribeOn(Schedulers.io());
         myPeer.subscribe();
         messages = findEvents("[Message]").subscribeOn(Schedulers.io())
                 .map(s -> Json.mapper.readValue(s, Message.class));
@@ -126,9 +125,15 @@ public class IpfsInterface implements P2pInterface {
         ).toObservable()
                 .flatMapIterable(strings -> strings)
                 //search timeout
-                .flatMap(peer -> searchAsk(new TypedMessage<>(peer, new SearchAsk(text, pageSize))).map(a -> a.m.torrents)
-                        .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty()), 4)
-                .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash));
+                .flatMap(peer -> {
+                    logger.debug("Request p2p search to peer: " + peer);
+                    return searchAsk(new TypedMessage<>(peer, new SearchAsk(text, pageSize))).map(a -> a.m.torrents)
+                            .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty());
+                }, 4)
+                .doOnNext(f -> {
+                    var names = f.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"));
+                    logger.debug(names);
+                });
 
 
     }

@@ -5,8 +5,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.model.es.FoundTorrent;
-import org.zella.tuapse.model.es.IndexMeta;
+import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.index.IndexMeta;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -19,7 +19,7 @@ public abstract class AbstractIndex implements Index {
 
     public static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
     protected static final long MaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("MAX_INDEX_SIZE_GB", "10"));
-    protected static final long MetaCacheExpireMin = Long.parseLong(System.getenv().getOrDefault("META_CACHE_EXPIRE_MIN", "5"));
+    protected static final long MetaCacheExpireMin = Long.parseLong(System.getenv().getOrDefault("META_CACHE_EXPIRE_MIN", "3"));
 
     private static final String KEY_META = "KEY_META";
 

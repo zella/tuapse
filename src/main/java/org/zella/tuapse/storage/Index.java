@@ -1,14 +1,14 @@
 package org.zella.tuapse.storage;
 
-import org.zella.tuapse.model.es.FoundTorrent;
-import org.zella.tuapse.model.es.IndexMeta;
-import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.index.IndexMeta;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 
 import java.util.List;
 
 public interface Index {
 
-    String insertTorrent(Torrent t);
+    String insertTorrent(StorableTorrent t);
 
     void createIndexIfNotExist();
 

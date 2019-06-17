@@ -12,11 +12,11 @@ import org.apache.lucene.search.highlight.Formatter;
 import org.apache.lucene.search.highlight.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.zella.tuapse.model.es.FoundTorrent;
-import org.zella.tuapse.model.es.Highlight;
-import org.zella.tuapse.model.es.IndexMeta;
+import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.index.Highlight;
+import org.zella.tuapse.model.index.IndexMeta;
 import org.zella.tuapse.model.torrent.TFile;
-import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.providers.Utils;
 import org.zella.tuapse.storage.AbstractIndex;
@@ -56,7 +56,7 @@ public class LuceneIndex extends AbstractIndex {
 
 
     @Override
-    public synchronized String insertTorrent(Torrent t) {
+    public synchronized String insertTorrent(StorableTorrent t) {
         try {
             //TODO seems like IndexWriter thread safe, but cannot share single directory
             Directory storageDir = FSDirectory.open(dir);
@@ -177,10 +177,10 @@ public class LuceneIndex extends AbstractIndex {
                     String path = filesPath.get(m.i);
                     var highlight = highlightsByPath.get(path);
                     if (highlight != null)
-                        highlights.add(Highlight.create(m.n, highlight));
+                        highlights.add(Highlight.create(m.n, highlight, m.l));
                 });
 
-                var torrent = Torrent.create(name, infoHash, files);
+                var torrent = StorableTorrent.create(name, infoHash, files);
 
                 result.add(FoundTorrent.create(torrent, highlights, hit.score));
 

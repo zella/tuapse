@@ -1,6 +1,6 @@
 package org.zella.tuapse.model.messages.impl;
 
-import org.zella.tuapse.model.es.FoundTorrent;
+import org.zella.tuapse.model.index.FoundTorrent;
 
 import java.util.List;
 

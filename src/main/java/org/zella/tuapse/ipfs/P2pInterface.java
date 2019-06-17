@@ -2,7 +2,7 @@ package org.zella.tuapse.ipfs;
 
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import org.zella.tuapse.model.es.FoundTorrent;
+import org.zella.tuapse.model.index.FoundTorrent;
 
 import java.util.List;
 

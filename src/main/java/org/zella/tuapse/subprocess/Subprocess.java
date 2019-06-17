@@ -7,7 +7,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.ipfs.impl.IpfsInterface;
-import org.zella.tuapse.model.torrent.Torrent;
+import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.providers.Json;
 
 import java.io.StringReader;
@@ -20,7 +20,7 @@ public class Subprocess {
 
     private static final Logger logger = LoggerFactory.getLogger(Subprocess.class);
     //TODO full path with "node.exe"
-    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "15"));
+    private static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "10"));
     private static final String WebTorrentExec = (System.getenv().getOrDefault("WEBTORRENT_EXEC", "dht_web/webtorrent.js"));
     private static final String GenTorrentExec = (System.getenv().getOrDefault("GENTORRENT_EXEC", "dht_web/gen-torrent-file.js"));
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
@@ -51,7 +51,7 @@ public class Subprocess {
 
     }
 
-    public static Single<Torrent> webtorrent(String hash) {
+    public static Single<LiveTorrent> webtorrent(String hash) {
 
         List<String> cmd = List.of("node", WebTorrentExec, hash);
         return RxNuProcessBuilder.fromCommand(cmd)
@@ -61,7 +61,7 @@ public class Subprocess {
                 .map(s -> IOUtils.readLines(new StringReader(s)).stream()
                         .filter(l -> l.startsWith("[torrent]"))
                         .map(l -> l.substring("[torrent]".length())).findFirst().get())
-                .map(s -> Json.mapper.readValue(s, Torrent.class));
+                .map(s -> Json.mapper.readValue(s, LiveTorrent.class));
     }
 
     public static Single<String> generateTorrentFile(String hash) {

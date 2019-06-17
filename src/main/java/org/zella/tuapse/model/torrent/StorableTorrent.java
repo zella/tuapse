@@ -2,17 +2,20 @@ package org.zella.tuapse.model.torrent;
 
 import java.util.List;
 
-public class Torrent {
+/**
+ * Record stored in index
+ */
+public class StorableTorrent {
 
     public String infoHash;
     public String name;
     public List<TFile> files;
 
-    public Torrent() {
+    public StorableTorrent() {
     }
 
-    public static Torrent create(String name, String infoHash, List<TFile> files){
-        var t = new Torrent();
+    public static StorableTorrent create(String name, String infoHash, List<TFile> files){
+        var t = new StorableTorrent();
         t.name = name;
         t.infoHash = infoHash;
         t.files = files;
