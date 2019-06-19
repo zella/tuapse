@@ -27,9 +27,11 @@ import org.zella.tuapse.storage.AbstractIndex;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class EsIndex extends AbstractIndex {
 
@@ -99,6 +101,8 @@ public class EsIndex extends AbstractIndex {
                     new HighlightBuilder.Field("files.path");
             highlightTitle.highlighterType("unified");
             highlightBuilder.field(highlightTitle);
+            highlightBuilder.preTags("<B>");
+            highlightBuilder.postTags("</B>");
 
             sourceBuilder.highlighter(highlightBuilder);
 
@@ -119,11 +123,19 @@ public class EsIndex extends AbstractIndex {
                 var highlights = new ArrayList<Highlight>();
                 HighlightField highlight = highlightFields.get("files.path");
                 if (highlight != null) {
-                    Text[] fragments = highlight.fragments();
+                    Text[] fragmentsArr = highlight.fragments();
+                    var fragments = Arrays.stream(fragmentsArr).limit(highlightsLimit).collect(Collectors.toList());
                     for (Text f : fragments) {
-                        //TODO unimplemented "-1"
-                        highlights.add(Highlight.create(-1, f.string(), -1));
-                        logger.debug(f.string());
+                        var highlightString = f.string();
+                        var unhtmled = highlightString.replace("<B>", "").replace("</B>", "");
+                        var fileOpt = torrent.files.stream().filter(fi -> fi.path.equals(unhtmled)).findFirst();
+                        if (fileOpt.isPresent())
+                            highlights.add(Highlight.create(fileOpt.get().index, highlightString, fileOpt.get().length));
+                        else {
+                            logger.warn("Highlight error for: " + highlightString);
+                            highlights.add(Highlight.create(-1, highlightString, -1));
+                        }
+                        logger.debug(highlightString);
                     }
                 }
                 result.add(FoundTorrent.create(torrent, highlights, hit.getScore()));

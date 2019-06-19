@@ -182,7 +182,8 @@ public class LuceneIndex extends AbstractIndex {
 
                 var torrent = StorableTorrent.create(name, infoHash, files);
 
-                result.add(FoundTorrent.create(torrent, highlights, hit.score));
+
+                result.add(FoundTorrent.create(torrent, highlights.stream().limit(highlightsLimit).collect(Collectors.toList()), hit.score));
 
             }
 

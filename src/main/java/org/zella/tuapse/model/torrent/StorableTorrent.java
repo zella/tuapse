@@ -14,7 +14,7 @@ public class StorableTorrent {
     public StorableTorrent() {
     }
 
-    public static StorableTorrent create(String name, String infoHash, List<TFile> files){
+    public static StorableTorrent create(String name, String infoHash, List<TFile> files) {
         var t = new StorableTorrent();
         t.name = name;
         t.infoHash = infoHash;
@@ -24,6 +24,9 @@ public class StorableTorrent {
 
     @Override
     public String toString() {
-        return infoHash + ", " + name;
+        return "StorableTorrent{" +
+                "infoHash='" + infoHash + '\'' +
+                ", name='" + name + '\'' +
+                '}';
     }
 }

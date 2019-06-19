@@ -14,12 +14,12 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.Runner;
 import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.torrent.StorableTorrent;
-import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.providers.RxUtils;
 import org.zella.tuapse.storage.AbstractIndex;
@@ -55,25 +55,11 @@ public class TuapseServer {
 
     public Single<HttpServer> listen() {
         var vertx = Vertx.vertx();
-//        WebClient client = WebClient.create(vertx);
-//        ThymeleafTemplateEngine templates = ThymeleafTemplateEngine.create(vertx);
 
         Router router = Router.router(vertx);
-//        router.get().handler(StaticHandler.create());
+
         router.post().handler(BodyHandler.create());
-//        router.get("/").handler(ctx -> ctx.reroute("/index.html"));
-//        router.get("/").handler(ctx -> {
-//            //TODO conditional remove from index.tempalte
-//            Map<String, Object> data = Map.of("TUAPSE_PLAY_ORIGIN", TuapsePlayOrigin, "TUAPSE_PLAY_ORIGIN2", TuapsePlayOrigin);
-//            templates.render(data, "templates/index.template", res -> {
-//                if (res.succeeded()) {
-//                    ctx.response().end(res.result());
-//                } else {
-//                    logger.error("Error", res.cause());
-//                    ctx.fail(res.cause());
-//                }
-//            });
-//        });
+
         router.get("/").handler(ctx -> {
             //TODO ui different non java project
             Single.fromCallable(() -> IOUtils.toString(this.getClass().getResourceAsStream("/templates/index.template"),
@@ -129,6 +115,9 @@ public class TuapseServer {
                             ipfs.get().search(text, AbstractIndex.PageSize))
                     ))
                     .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
+                    .serialize()
+                    .flatMapIterable(s -> s)
+                    .map(List::of)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
@@ -137,30 +126,28 @@ public class TuapseServer {
                                 ctx.response().end();
                             },
                             () -> ctx.response().end());
-
-
         });
         router.get("/api/v1/search_eval_peers").handler(ctx -> {
             //chunked response
             ctx.response().setChunked(true);
 
-            Observable<List<FoundTorrent>> searchO = Single.fromCallable(() -> ctx.queryParams().get("text"))
+            Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(text -> Observable.merge(List.of(
                             Single.fromCallable(() -> index.search(text)).toObservable(),
                             ipfs.get().search(text, AbstractIndex.PageSize))
                     ))
+                    .serialize()
+                    .doOnNext(r -> logger.debug("Search result before deduplicate: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
                     .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
-                    .subscribeOn(Schedulers.io()).cache();
-
-            //TODO cache peers! and statistical remove?
-            Observable<List<LiveTorrent>> evaluatedO = searchO.map(ts -> ts.stream().map(t -> t.torrent.infoHash).collect(Collectors.toList()))
-                    .flatMapSingle(h -> importer.evalTorrentsData(h)
-                            .subscribeOn(Schedulers.io()).toList());
-
-            Observable.zip(searchO, evaluatedO, FoundTorrent::fillWithPeers)
-                    .subscribeOn(Schedulers.io())
+                    .doOnNext(r -> logger.debug("Search result: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
+                    .flatMap(ts -> importer.evalTorrentsData(ts.stream().map(t -> t.torrent.infoHash).collect(Collectors.toList()))
+                            .subscribeOn(Schedulers.io())
+                            .toList().toObservable().map(live -> FoundTorrent.fillWithPeers(ts, live)), Runner.WebtorrConcurency)
+                    .flatMapIterable(s -> s)
+                    .map(List::of)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
+                    .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))))
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
                             e -> {
                                 logger.error("Error", e);

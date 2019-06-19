@@ -17,7 +17,7 @@ public class TestCase {
         es.createIndexIfNotExist();
 
         var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1000);
-        var f2 = TFile.create(1, "sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd ", 1000);
+        var f2 = TFile.create(1, "sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd", 1000);
         var f3 = TFile.create(8, "/music/ДДТ/в последнюю осень.mp3", 1000);
         var f3a = TFile.create(3, "NO DDT) HERE", 1000);
         var t1 = StorableTorrent.create("ДДТ дискография", "hash1", List.of(f1, f2, f3, f3a));
@@ -47,14 +47,11 @@ public class TestCase {
         assertThat(search1.size()).isEqualTo(1);
         assertThat(search1.get(0).highlights.size()).isEqualTo(3);
 
-        assertThat(search1.get(0).highlights.get(0).index).isEqualTo(8);
-        assertThat(search1.get(0).highlights.get(1).index).isEqualTo(0);
-        assertThat(search1.get(0).highlights.get(2).index).isEqualTo(1);
-
-        //test highlight index
-        assertThat(search1.get(0).highlights.get(0).path).isEqualTo("/music/<B>ДДТ</B>/в последнюю осень.mp3");
-        assertThat(search1.get(0).highlights.get(1).path).isEqualTo("/music/<B>ДДТ</B>/осень.mp3");
-        assertThat(search1.get(0).highlights.get(2).path).isEqualTo("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/<B>ДДТ</B>/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd ");
+        //test highlight and restoring file index(number) from index
+        assertThat(search1.get(0).highlights.stream().filter(h -> h.path.equals("/music/<B>ДДТ</B>/в последнюю осень.mp3")).findFirst().get().index).isEqualTo(8);
+        assertThat(search1.get(0).highlights.stream().filter(h -> h.path.equals("/music/<B>ДДТ</B>/осень.mp3")).findFirst().get().index).isEqualTo(0);
+        assertThat(search1.get(0).highlights.stream()
+                .filter(h -> h.path.equals("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/<B>ДДТ</B>/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd")).findFirst().get().index).isEqualTo(1);
 
         var search2 = es.search("полковник");
         assertThat(search2.size()).isEqualTo(1);

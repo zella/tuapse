@@ -23,6 +23,8 @@ public abstract class AbstractIndex implements Index {
 
     private static final String KEY_META = "KEY_META";
 
+    protected final int highlightsLimit = 16;
+
     private final LoadingCache<String, IndexMeta> indexMetaCache = CacheBuilder.newBuilder()
             .maximumSize(1)
             .expireAfterWrite(MetaCacheExpireMin, TimeUnit.MINUTES)

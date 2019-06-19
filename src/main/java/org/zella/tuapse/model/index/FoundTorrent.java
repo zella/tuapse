@@ -37,4 +37,9 @@ public class FoundTorrent {
         }
         return res;
     }
+
+    @Override
+    public String toString() {
+        return torrent.toString();
+    }
 }

@@ -64,12 +64,10 @@ public class Runner {
 
         var importer = new Importer(es);
 
-        //if mock spider not working. But index not worked too :)
+        //if mock, spider not working. But index not worked too :)
         if (!IndexType.equals("MOCK")) {
             Subprocess.spider()
                     .retry()
-                    //TODO we should have large buffer and stop spider if buffer full until its free
-                    //bt idealy need investigate bep_005 and spider and reduce speed
                     .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
                     .flatMap(hash -> Subprocess.webtorrent(hash)
@@ -81,8 +79,8 @@ public class Runner {
                     .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
                     .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
                     .subscribeOn(Schedulers.io())
-                    .takeWhile(s -> es.isSpaceAllowed());
-//                    .subscribe(s -> logger.info("Inserted: " + s));
+                    .takeWhile(s -> es.isSpaceAllowed())
+                    .subscribe(s -> logger.info("Inserted: " + s));
         }
 
         var server = new TuapseServer(es, importer);

@@ -58,6 +58,7 @@ public class IpfsInterface implements P2pInterface {
         return stdout.toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))
+//                .doOnNext(e -> logger.info("EVENT: " + e))
                 .filter(s -> s.startsWith(event))
                 .map(s -> s.substring(event.length()))
                 .serialize();
@@ -95,6 +96,7 @@ public class IpfsInterface implements P2pInterface {
     public Flowable<TypedMessage<SearchAsk>> distributedSearches() {
         return messages
                 .filter(byType("searchAsk"))
+                .doOnNext(e -> logger.debug("Receive distributed searches: " + e))
                 //double parse, but don't care for now
                 .map(m -> new TypedMessage<>(m.peerId, Json.mapper.readValue(m.data, SearchAsk.class)));
     }
@@ -110,8 +112,8 @@ public class IpfsInterface implements P2pInterface {
 
     private Single<TypedMessage<SearchAnswer>> searchAsk(TypedMessage<SearchAsk> m) {
         return Completable.fromRunnable(() -> this.stdIn.onNext(("[SearchAsk]" + m.toJsonString() + System.lineSeparator()).getBytes()))
-                .andThen(findEvent("[Peers]").map(s -> Json.mapper.readValue(s, new TypeReference<TypedMessage<SearchAnswer>>() {
-                })));
+                .andThen(messages
+                        .filter(byType("searchAnswer")).firstOrError().map(mm -> new TypedMessage<>(mm.peerId, Json.mapper.readValue(mm.data, SearchAnswer.class))));
     }
 
     @Override

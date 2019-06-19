@@ -1,6 +1,5 @@
 package org.zella.tuapse.providers;
 
-import io.reactivex.Observable;
 import io.reactivex.ObservableTransformer;
 import io.reactivex.functions.Function;
 
