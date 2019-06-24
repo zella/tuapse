@@ -83,7 +83,7 @@ public class EsIndex extends AbstractIndex {
         }
     }
 
-    public List<FoundTorrent> search(String what, int pageSize) {
+    public List<FoundTorrent<StorableTorrent>> search(String what, int pageSize) {
         try {
             SearchRequest searchRequest = Requests.searchRequest("torrents");
 
@@ -112,7 +112,7 @@ public class EsIndex extends AbstractIndex {
             SearchHits hits = response.getHits();
             SearchHit[] searchHits = hits.getHits();
 
-            var result = new ArrayList<FoundTorrent>();
+            var result = new ArrayList<FoundTorrent<StorableTorrent>>();
             logger.debug("Found:");
             for (SearchHit hit : searchHits) {
                 // do something with the SearchHit

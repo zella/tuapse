@@ -16,6 +16,7 @@ import org.zella.tuapse.model.messages.Message;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
 
 import java.nio.charset.Charset;
@@ -117,7 +118,7 @@ public class IpfsInterface implements P2pInterface {
     }
 
     @Override
-    public Observable<List<FoundTorrent>> search(String text, int pageSize) {
+    public Observable<List<FoundTorrent<StorableTorrent>>> search(String text, int pageSize) {
         return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
                     Collections.shuffle(they.peers);
                     logger.debug("My peer id and peers evaluated");

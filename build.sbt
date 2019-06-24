@@ -17,6 +17,8 @@ lazy val root = (project in file("."))
     libraryDependencies += "io.reactivex.rxjava2" % "rxjava" % "2.2.8",
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.9.8",
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.9.8",
+    libraryDependencies += "com.fasterxml.jackson.module" % "jackson-modules-java8" % "2.9.8",
+    libraryDependencies += "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % "2.9.8",
     libraryDependencies += "commons-io" % "commons-io" % "2.6",
     //es 7.1.1 uses lucene 8.0.0, some problem use latest lucene on classpath TODO
     libraryDependencies += "org.elasticsearch.client" % "transport" % "7.1.1",

@@ -1,7 +1,6 @@
 package org.zella.tuapse.server;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.vertx.reactivex.core.Vertx;
@@ -14,21 +13,15 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.Runner;
 import org.zella.tuapse.importer.Importer;
-import org.zella.tuapse.ipfs.P2pInterface;
-import org.zella.tuapse.ipfs.impl.IpfsDisabled;
-import org.zella.tuapse.model.index.FoundTorrent;
+import org.zella.tuapse.model.net.SingleFileSearchInput;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
-import org.zella.tuapse.providers.RxUtils;
-import org.zella.tuapse.storage.AbstractIndex;
-import org.zella.tuapse.storage.Index;
+import org.zella.tuapse.search.Search;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class TuapseServer {
@@ -39,19 +32,14 @@ public class TuapseServer {
     private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "120"));
     private static final String TuapsePlayOrigin = (System.getenv().getOrDefault("TUAPSE_PLAY_ORIGIN", "N/A"));
 
-    private AtomicReference<P2pInterface> ipfs = new AtomicReference<>(new IpfsDisabled());
-
-    private final Index index;
     private final Importer importer;
+    private final Search search;
 
-    public TuapseServer(Index index, Importer importer) {
-        this.index = index;
+    public TuapseServer(Importer importer, Search search) {
         this.importer = importer;
+        this.search = search;
     }
 
-    public void ipfsUpdate(P2pInterface search) {
-        ipfs.set(search);
-    }
 
     public Single<HttpServer> listen() {
         var vertx = Vertx.vertx();
@@ -87,12 +75,12 @@ public class TuapseServer {
                     logger.error("Error", e);
                     ctx.fail(e);
                 }));
-        router.get("/api/v1/p2pMeta").handler(ctx -> ipfs.get().getPeers()
+        router.get("/api/v1/p2pMeta").handler(ctx -> search.getIpfs().get().getPeers()
                 .subscribe(meta -> ctx.response().end(Json.mapper.writeValueAsString(meta)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
                 }));
-        router.get("/api/v1/indexMeta").handler(ctx -> Single.fromCallable(() -> Json.mapper.writeValueAsString(index.indexMeta()))
+        router.get("/api/v1/indexMeta").handler(ctx -> Single.fromCallable(() -> Json.mapper.writeValueAsString(search.getIndex().indexMeta()))
                 .subscribe(s -> ctx.response().end(s), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
@@ -107,17 +95,9 @@ public class TuapseServer {
                             });
         });
         router.get("/api/v1/search").handler(ctx -> {
-            //chunked response
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(text -> Observable.merge(List.of(
-                            Single.fromCallable(() -> index.search(text)).toObservable(),
-                            ipfs.get().search(text, AbstractIndex.PageSize))
-                    ))
-                    .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
-                    .serialize()
-                    .flatMapIterable(s -> s)
-                    .map(List::of)
+                    .flatMapObservable(search::searchNoPeersData)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
@@ -128,23 +108,9 @@ public class TuapseServer {
                             () -> ctx.response().end());
         });
         router.get("/api/v1/search_eval_peers").handler(ctx -> {
-            //chunked response
             ctx.response().setChunked(true);
-
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(text -> Observable.merge(List.of(
-                            Single.fromCallable(() -> index.search(text)).toObservable(),
-                            ipfs.get().search(text, AbstractIndex.PageSize))
-                    ))
-                    .serialize()
-                    .doOnNext(r -> logger.debug("Search result before deduplicate: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
-                    .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
-                    .doOnNext(r -> logger.debug("Search result: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
-                    .flatMap(ts -> importer.evalTorrentsData(ts.stream().map(t -> t.torrent.infoHash).collect(Collectors.toList()))
-                            .subscribeOn(Schedulers.io())
-                            .toList().toObservable().map(live -> FoundTorrent.fillWithPeers(ts, live)), Runner.WebtorrConcurency)
-                    .flatMapIterable(s -> s)
-                    .map(List::of)
+                    .flatMapObservable(search::search)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))))
@@ -156,6 +122,21 @@ public class TuapseServer {
                             () -> ctx.response().end());
 
         });
+        router.get("/api/v1/search_file").handler(ctx -> {
+            Single.fromCallable(() -> SingleFileSearchInput.fromRequestParams(ctx.request().params()))
+                    .flatMap(p -> search.searchSingle(p.text, p.extensions))
+                    .timeout(ReqTimeout, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
+                    .doOnSuccess(r -> logger.debug("Found file: " + r.fileWithMeta.file.path))
+                    .subscribe(r -> ctx.response().end(Json.mapper.writeValueAsString(r.fileWithMeta)), e -> {
+                                logger.error("Error", e);
+                                ctx.fail(e);
+                            }
+                    );
+
+        });
+
+
         return vertx.createHttpServer().
                 requestHandler(router).rxListen(Port);
     }

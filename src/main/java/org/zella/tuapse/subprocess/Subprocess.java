@@ -26,8 +26,8 @@ public class Subprocess {
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));
     private static final String SpiderExec = (System.getenv().getOrDefault("SPIDER_EXEC", "dht_web/spider.js"));
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
-    private static final String WebTorrGenDir = (System.getenv().getOrDefault("WEBTOR_GEN_DIR", "/tmp/webtorrent_gen/"));
-    private static final String WebTorrSpiderDir = (System.getenv().getOrDefault("WEBTOR_SPIDER_DIR", "/tmp/webtorrent_spider/"));
+    public static final String WebTorrGenDir = (System.getenv().getOrDefault("WEBTOR_GEN_DIR", "/tmp/webtorrent_gen/"));
+    public static final String WebTorrSpiderDir = (System.getenv().getOrDefault("WEBTOR_SPIDER_DIR", "/tmp/webtorrent_spider/"));
     private static final int SpiderJumpTimeSec;
 
     static {

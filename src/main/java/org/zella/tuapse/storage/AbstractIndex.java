@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.index.IndexMeta;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -44,7 +45,7 @@ public abstract class AbstractIndex implements Index {
     }
 
     @Override
-    public List<FoundTorrent> search(String what) {
+    public List<FoundTorrent<StorableTorrent>> search(String what) {
         return search(what, PageSize);
     }
 

@@ -12,7 +12,7 @@ import java.util.List;
 public class MockEsSearch extends EsIndex {
 
     @Override
-    public List<FoundTorrent> search(String what) {
+    public List<FoundTorrent<StorableTorrent>> search(String what) {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {

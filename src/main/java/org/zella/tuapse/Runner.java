@@ -1,9 +1,6 @@
 package org.zella.tuapse;
 
-import io.reactivex.BackpressureOverflowStrategy;
-import io.reactivex.Completable;
-import io.reactivex.Flowable;
-import io.reactivex.Single;
+import io.reactivex.*;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +8,8 @@ import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
+import org.zella.tuapse.providers.Utils;
+import org.zella.tuapse.search.Search;
 import org.zella.tuapse.server.TuapseServer;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.storage.impl.EsIndex;
@@ -32,7 +31,7 @@ public class Runner {
     public static void main(String[] args) {
 
 
-        final Index es;
+        final Index index;
         switch (IndexType) {
             case "EMBEDDED":
                 var path = System.getenv("EMBEDDED_INDEX_DIR");
@@ -40,29 +39,33 @@ public class Runner {
                     System.err.println("EMBEDDED_INDEX_DIR env variable not set");
                     System.exit(-1);
                 }
-                es = new LuceneIndex(Paths.get(path));
+                index = new LuceneIndex(Paths.get(path));
                 break;
             case "ELASTICSEARCH":
-                es = new EsIndex();
+                index = new EsIndex();
                 break;
             case "MOCK":
-                es = new MockEsSearch();
+                index = new MockEsSearch();
                 break;
             default:
-                es = null;
+                index = null;
                 System.err.println("Wrong index type");
                 System.exit(-1);
         }
 
         try {
-            es.createIndexIfNotExist();
+            index.createIndexIfNotExist();
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(-1);
         }
 
 
-        var importer = new Importer(es);
+        var importer = new Importer(index);
+
+        var search = new Search(index, importer);
+
+        var server = new TuapseServer(importer, search);
 
         //if mock, spider not working. But index not worked too :)
         if (!IndexType.equals("MOCK")) {
@@ -71,7 +74,7 @@ public class Runner {
                     .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
                     .flatMap(hash -> Subprocess.webtorrent(hash)
-                                    .flatMap(t -> Single.fromCallable(() -> es.insertTorrent(t)))
+                                    .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
                                     .toFlowable()
                                     .doOnError(throwable -> logger.warn(throwable.getMessage()))
                                     .onErrorResumeNext(Flowable.empty())
@@ -79,14 +82,22 @@ public class Runner {
                     .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
                     .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
                     .subscribeOn(Schedulers.io())
-                    .takeWhile(s -> es.isSpaceAllowed())
+                    .takeWhile(s -> index.isSpaceAllowed())
                     .subscribe(s -> logger.info("Inserted: " + s));
         }
 
-        var server = new TuapseServer(es, importer);
+        Observable.interval(1, TimeUnit.HOURS)
+                .flatMap(aLong -> Observable.fromCallable(() -> Utils.recursiveDeleteFilesAcessedOlderThanNDays(1, Paths.get(Subprocess.WebTorrGenDir))))
+                .subscribeOn(Schedulers.io())
+                .subscribe(n -> logger.info("Deleted side effect generate torrent " + n + " files"));
+
+        Observable.interval(1, TimeUnit.HOURS)
+                .flatMap(aLong -> Observable.fromCallable(() -> Utils.recursiveDeleteFilesAcessedOlderThanNDays(1, Paths.get(Subprocess.WebTorrSpiderDir))))
+                .subscribeOn(Schedulers.io())
+                .subscribe(n -> logger.info("Deleted side effect spider " + n + " files"));
 
         Single.fromCallable(Subprocess::ipfsRoom).flatMapCompletable(ipfs -> {
-            server.ipfsUpdate(ipfs);
+            search.ipfsUpdate(ipfs);
 
             Completable waitExit = ipfs.waitExit().flatMapCompletable(e -> Completable.error(new Exception("Process dead")))
                     .subscribeOn(Schedulers.io());
@@ -95,14 +106,14 @@ public class Runner {
                     .subscribeOn(Schedulers.io())
                     .onBackpressureBuffer(4, () -> logger.warn("Search to slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
-                    .flatMapSingle(req -> Single.fromCallable(() -> es.search(req.m.searchString, req.m.pageSize))
+                    .flatMapSingle(req -> Single.fromCallable(() -> index.search(req.m.searchString, req.m.pageSize))
                             .flatMap(searchResult -> ipfs.searchAnswer(new TypedMessage<>(req.peerId, SearchAnswer.create(searchResult)))
                                     //TODO fix me, use completable
                                     .toSingleDefault("ok"))).ignoreElements();
             return Completable.merge(List.of(waitExit, p2pSearches));
         })
                 //maybe another?
-                .doOnError(e -> server.ipfsUpdate(new IpfsDisabled()))
+                .doOnError(e -> search.ipfsUpdate(new IpfsDisabled()))
                 .retryWhen(throwables -> throwables.delay(5, TimeUnit.SECONDS))
                 .subscribeOn(Schedulers.computation())
                 .observeOn(Schedulers.computation())

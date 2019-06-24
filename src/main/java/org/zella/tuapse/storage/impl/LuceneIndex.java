@@ -125,7 +125,7 @@ public class LuceneIndex extends AbstractIndex {
     }
 
     @Override
-    public synchronized List<FoundTorrent> search(String what, int pageSize) {
+    public synchronized List<FoundTorrent<StorableTorrent>> search(String what, int pageSize) {
         try {
             Directory storageDir = FSDirectory.open(dir);
             IndexReader reader = DirectoryReader.open(storageDir);
@@ -141,7 +141,7 @@ public class LuceneIndex extends AbstractIndex {
             var query = both.build();
 
             TopDocs docs = searcher.search(both.build(), Math.min(pageSize, PageSize));
-            var result = new ArrayList<FoundTorrent>();
+            var result = new ArrayList<FoundTorrent<StorableTorrent>>();
             for (ScoreDoc hit : docs.scoreDocs) {
                 var doc = searcher.doc(hit.doc);
                 var infoHash = doc.get(FIELD_INFO_HASH);

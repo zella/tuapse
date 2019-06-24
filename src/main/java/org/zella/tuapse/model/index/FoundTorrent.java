@@ -8,15 +8,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class FoundTorrent {
-    public StorableTorrent torrent;
+public class FoundTorrent<T extends StorableTorrent> {
+    public T torrent;
     public List<Highlight> highlights;
     public float score;
 
     public FoundTorrent() {
     }
 
-    public static FoundTorrent create(StorableTorrent t, List<Highlight> highlights, float score) {
+    public FoundTorrent(T torrent, List<Highlight> highlights, float score) {
+        this.torrent = torrent;
+        this.highlights = highlights;
+        this.score = score;
+    }
+
+    public static <T extends StorableTorrent> FoundTorrent<T> create(T t, List<Highlight> highlights, float score) {
         FoundTorrent f = new FoundTorrent();
         f.torrent = t;
         f.highlights = highlights;
@@ -25,12 +31,12 @@ public class FoundTorrent {
     }
 
 
-    public static List<FoundTorrent> fillWithPeers(List<FoundTorrent> found, List<LiveTorrent> withPeers) {
+    public static List<FoundTorrent<LiveTorrent>> fillWithPeers(List<FoundTorrent<StorableTorrent>> found, List<LiveTorrent> withPeers) {
 
         Map<String, LiveTorrent> map = withPeers.stream()
                 .collect(Collectors.toMap(t -> t.infoHash, t -> t, (oldValue, newValue) -> oldValue));
-        List<FoundTorrent> res = new ArrayList<>();
-        for (FoundTorrent f : found) {
+        List<FoundTorrent<LiveTorrent>> res = new ArrayList<>();
+        for (FoundTorrent<StorableTorrent> f : found) {
             var t = map.get(f.torrent.infoHash);
             if (t != null)
                 res.add(FoundTorrent.create(t, f.highlights, f.score));

@@ -12,9 +12,9 @@ public interface Index {
 
     void createIndexIfNotExist();
 
-    List<FoundTorrent> search(String what);
+    List<FoundTorrent<StorableTorrent>> search(String what);
 
-    List<FoundTorrent> search(String what, int pageSize);
+    List<FoundTorrent<StorableTorrent>> search(String what, int pageSize);
 
     Boolean isSpaceAllowed();
 
