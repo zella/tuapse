@@ -14,6 +14,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
+<script src="https://github.com/eBay/jsonpipe/blob/master/jsonpipe.js"></script>
 
 
 <body>
@@ -117,103 +118,92 @@
                 searchRequest.abort();
             torrentsEl.innerHTML = '';
             var text = document.getElementById("searchText").value;
-            var last_index = 0;
-            var xhr = new XMLHttpRequest();
-            searchRequest = xhr;
-            xhr.open("GET", "/api/v1/search_eval_peers?text=" + text, true);
-            xhr.onprogress = function () {
-                var curr_index = xhr.responseText.length;
-                if (last_index === curr_index) return;
-                var s = xhr.responseText.substring(last_index, curr_index);
-                last_index = curr_index;
-                console.log("Search data:");
-                console.log(s);
-                console.log("Search data end");
 
-                var splitted = s.split ('\n').filter(function(el) {return el.length !== 0});
-                console.log("Splitted arr:");
-                console.log(splitted);
-                console.log("Splitted arr end");
-
-                for (const torArr of splitted) {
-                    try {
-                        console.log("Splitted data:");
-                        console.log(torArr);
-                        console.log("Splitted data end");
-                        var torrents = JSON.parse(torArr);
-                        torrents.forEach(function (torrent) {
-
-                            torrent.fileBtnId = torrent.torrent.infoHash + "_f";
-                            torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
-                            torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
-                            torrent.fileName = torrent.torrent.infoHash + ".torrent";
-
-                            console.log(torrent);
-
-                            highlights = torrent.highlights.map(function (file) {
-                                file.humanSize = humanFileSize(file.length, false);
-                                return file;
-                            });
-
-                            torrent.highlights = highlights;
-
-                            var li = document.createElement('li'); // is a node
-                            li.innerHTML = rendering(torrent);
-                            torrentsEl.appendChild(li);
-
-
-                            torrent.highlights.map(function (file) {
-                                file.humanSize = humanFileSize(file.length, false);
-                                return file;
-                            }).forEach(function (file) {
-                                //play, download etc links
-                                console.log(file);
-                                $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
-                                    // $.post("WhateverPage.php", {name: "John", time: "2pm"});  //Your values here..
-                                    // alert(file.index)
-                                    // console.log(file.index)
-                                    $.ajax({
-                                        url: '[TUAPSE_PLAY_ORIGIN]/api/v1/play',
-                                        type: 'POST',
-                                        crossDomain: true,
-                                        data: JSON.stringify({
-                                            hash: torrent.torrent.infoHash,
-                                            index: file.index,
-                                            streaming: 'xbmc'
-                                        }),
-                                        contentType: 'application/json; charset=utf-8',
-                                        dataType: 'json',
-                                        async: false,
-                                        success: function (data) {
-                                            M.toast({html: 'Playing on kodi...'}) //TODO file name only
-                                        }
-                                    });
-                                });
-                                // $("#download_direct" + torrent.torrent.infoHash + file.index).click(function () {
-                                //     alert(file.index)
-                                //     console.log(file.index)
-                                // });
-
-                            })
-                        });
-                    }
-                    catch (e) {
-                        console.log(e);
-                    }
-                }
-
-                $('.modal').modal();
-            };
-
-            xhr.onloadstart = function () {
-                progressEl.style.visibility = 'visible'
-            };
-            xhr.onloadend = function () {
-                progressEl.style.visibility = 'hidden'
-            };
-
-            xhr.send();
+            //================
+            progressEl.style.visibility = 'visible';
+            jsonpipe.flow(window.location.origin + "/api/v1/search_eval_peers?text=" + text, {
+                "delimiter": "\n", // String. The delimiter separating valid JSON objects; default is "\n\n"
+                "onHeaders": function (statusText, headers) {
+                    // Do something with the headers and the statusText.
+                },
+                "success": handleSearchChunk,
+                "error": function (errorMsg) {
+                    // Something wrong happened, check the error message
+                },
+                "complete": function (statusText) {
+                    console.log(statusText);
+                    progressEl.style.visibility = 'hidden'
+                },
+                "timeout": 600000, // 10 min timeout
+                "method": "GET",
+                "headers": { // Object. An object of additional header key/value pairs to send along with request
+                    // "X-Requested-With": "XMLHttpRequest"
+                },
+                "data": "", // String. A serialized string to be sent in a POST/PUT request,
+                "withCredentials": true // Boolean. Send cookies when making cross-origin requests; default is true
+            });
+            //================
         };
+
+        function handleSearchChunk(torArr) {
+            console.log("Receive chunk:");
+            console.log(torArr);
+            try {
+                var torrents = JSON.parse(torArr);
+                torrents.forEach(function (torrent) {
+                    torrent.fileBtnId = torrent.torrent.infoHash + "_f";
+                    torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
+                    torrent.hrefFile = "/api/v1/generateTorrentFile?hash=" + torrent.torrent.infoHash;
+                    torrent.fileName = torrent.torrent.infoHash + ".torrent";
+
+                    console.log(torrent);
+
+                    highlights = torrent.highlights.map(function (file) {
+                        file.humanSize = humanFileSize(file.length, false);
+                        return file;
+                    });
+
+                    torrent.highlights = highlights;
+
+                    var li = document.createElement('li'); // is a node
+                    li.innerHTML = rendering(torrent);
+                    torrentsEl.appendChild(li);
+
+
+                    torrent.highlights.map(function (file) {
+                        file.humanSize = humanFileSize(file.length, false);
+                        return file;
+                    }).forEach(function (file) {
+                        //play, download etc links
+                        console.log(file);
+                        $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
+                            $.ajax({
+                                url: '[TUAPSE_PLAY_ORIGIN]/api/v1/play',
+                                type: 'POST',
+                                crossDomain: true,
+                                data: JSON.stringify({
+                                    hash: torrent.torrent.infoHash,
+                                    index: file.index,
+                                    streaming: 'xbmc'
+                                }),
+                                contentType: 'application/json; charset=utf-8',
+                                dataType: 'json',
+                                async: false,
+                                success: function (data) {
+                                    M.toast({html: 'Playing on kodi...'}) //TODO file name only
+                                }
+                            });
+                        });
+                    })
+                });
+            }
+            catch (e) {
+                console.log(e);
+            }
+
+            $('.modal').modal();
+        }
+
 
         function updP2pMeta() {
             var xhr = new XMLHttpRequest();

@@ -17,6 +17,7 @@ import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.model.net.SingleFileSearchInput;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.providers.TuapseSchedulers;
 import org.zella.tuapse.search.Search;
 import org.zella.tuapse.subprocess.Subprocess;
 
@@ -70,7 +71,7 @@ public class TuapseServer {
                 }));
         router.post("/api/v1/evalTorrents").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
         }).doOnSuccess(h -> logger.debug(h.toString()))
-                .flatMap(hashes -> importer.evalTorrentsData(hashes).toList().subscribeOn(Schedulers.io()))
+                .flatMap(hashes -> importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch()).toList().subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
@@ -110,7 +111,7 @@ public class TuapseServer {
         router.get("/api/v1/search_eval_peers").handler(ctx -> {
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(search::search)
+                    .flatMapObservable(text -> search.search(text, 4))
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))))

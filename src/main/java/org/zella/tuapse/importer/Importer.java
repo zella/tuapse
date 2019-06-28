@@ -1,6 +1,7 @@
 package org.zella.tuapse.importer;
 
 import io.reactivex.Observable;
+import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +24,11 @@ public class Importer {
         this.index = index;
     }
 
-    public Observable<LiveTorrent> evalTorrentsData(List<String> hash) {
+    public Observable<LiveTorrent> evalTorrentsData(List<String> hash, Scheduler sc) {
         return Observable.fromIterable(hash)
-                //TODO remove Concurency, just use special scheduler
-                .flatMap(h -> Subprocess.webtorrent(h).toObservable().onErrorResumeNext(Observable.empty()), Runner.WebtorrConcurency);
+                .flatMap(h -> Subprocess.webtorrent(h)
+                        .subscribeOn(sc)
+                        .toObservable().onErrorResumeNext(Observable.empty()));
     }
 
     public Single<List<String>> importTorrents(List<StorableTorrent> torrents) {

@@ -8,6 +8,7 @@ import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
+import org.zella.tuapse.providers.TuapseSchedulers;
 import org.zella.tuapse.providers.Utils;
 import org.zella.tuapse.search.Search;
 import org.zella.tuapse.server.TuapseServer;
@@ -25,7 +26,6 @@ public class Runner {
 
     private static final Logger logger = LoggerFactory.getLogger(Runner.class);
 
-    public static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "4"));
     private static final String IndexType = (System.getenv().getOrDefault("INDEX_TYPE", "EMBEDDED"));
 
     public static void main(String[] args) {
@@ -73,12 +73,13 @@ public class Runner {
                     .retry()
                     .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
-                    .flatMap(hash -> Subprocess.webtorrent(hash)
+                    //TODO test it
+                    .flatMap(hash -> Subprocess.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider())
                                     .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
                                     .toFlowable()
                                     .doOnError(throwable -> logger.warn(throwable.getMessage()))
                                     .onErrorResumeNext(Flowable.empty())
-                            , WebtorrConcurency)
+                            )
                     .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
                     .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
                     .subscribeOn(Schedulers.io())
