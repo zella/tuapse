@@ -1,7 +1,7 @@
 package org.zella.tuapse.model.index;
 
-import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.model.torrent.LiveTorrent;
+import org.zella.tuapse.model.torrent.StorableTorrent;
 
 import java.util.ArrayList;
 import java.util.List;

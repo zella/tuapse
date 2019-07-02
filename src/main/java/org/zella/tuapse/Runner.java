@@ -67,25 +67,40 @@ public class Runner {
 
         var server = new TuapseServer(importer, search);
 
-        //if mock, spider not working. But index not worked too :)
-        if (!IndexType.equals("MOCK")) {
-            Subprocess.spider()
-                    .retry()
-                    .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
-                            BackpressureOverflowStrategy.DROP_LATEST)
-                    //TODO test it
-                    .flatMap(hash -> Subprocess.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider())
-                                    .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
-                                    .toFlowable()
-                                    .doOnError(throwable -> logger.warn(throwable.getMessage()))
-                                    .onErrorResumeNext(Flowable.empty())
-                            )
-                    .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
-                    .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
-                    .subscribeOn(Schedulers.io())
-                    .takeWhile(s -> index.isSpaceAllowed())
-                    .subscribe(s -> logger.info("Inserted: " + s));
-        }
+        Single.fromCallable(Subprocess::webTorrentDaemon).flatMapCompletable(webtorrent -> {
+            importer.webTorrentUpdate(webtorrent);
+            Completable waitExit = webtorrent.waitExit().flatMapCompletable(e -> Completable.error(new Exception("Process dead")))
+                    .subscribeOn(Schedulers.io());
+
+            Completable spider = Completable.never();
+            //if mock, spider not working. But index not worked too :)
+            if (!IndexType.equals("MOCK")) {
+                spider = Subprocess.spider()
+                        .retry()
+                        .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
+                                BackpressureOverflowStrategy.DROP_LATEST)
+                        //TODO test it
+                        .flatMap(hash -> webtorrent.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider())
+                                .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
+                                .toFlowable()
+                                .doOnError(throwable -> logger.warn(throwable.getMessage()))
+                                .onErrorResumeNext(Flowable.empty())
+                        )
+                        .timeout(60, TimeUnit.MINUTES) //restart spider if no insertion long time
+                        .retryWhen(throwables -> throwables.delay(30, TimeUnit.SECONDS))
+                        .subscribeOn(Schedulers.io())
+                        .takeWhile(s -> index.isSpaceAllowed())
+                        .doOnNext(s -> logger.info("Inserted: " + s))
+                        .ignoreElements();
+            }
+
+
+            return Completable.merge(List.of(waitExit, spider));
+        })
+                .retryWhen(throwables -> throwables.delay(5, TimeUnit.SECONDS))
+                .subscribeOn(Schedulers.io())
+                .subscribe();
+
 
         Observable.interval(1, TimeUnit.HOURS)
                 .flatMap(aLong -> Observable.fromCallable(() -> Utils.recursiveDeleteFilesAcessedOlderThanNDays(1, Paths.get(Subprocess.WebTorrGenDir))))

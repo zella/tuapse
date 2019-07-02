@@ -95,10 +95,10 @@ public class TuapseServer {
                                 ctx.fail(e);
                             });
         });
-        router.get("/api/v1/search").handler(ctx -> {
+        router.get("/api/v1/search_no_eval_peers").handler(ctx -> {
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(search::searchNoPeersData)
+                    .flatMapObservable(search::searchNoEvalPeers)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
@@ -111,7 +111,7 @@ public class TuapseServer {
         router.get("/api/v1/search_eval_peers").handler(ctx -> {
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(text -> search.search(text, 4))
+                    .flatMapObservable(text -> search.searchEvalPeers(text, 4))
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))))
