@@ -8,11 +8,16 @@ import io.reactivex.Flowable;
 import io.reactivex.Observer;
 import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
 
 public abstract class BaseInOutLineInterface {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(BaseInOutLineInterface.class);
 
     protected final int eventWaitTimeout;
 
@@ -36,7 +41,6 @@ public abstract class BaseInOutLineInterface {
     }
 
 
-
     protected Single<String> findEvent(String event) {
         return findEvents(event)
                 .timeout(eventWaitTimeout, TimeUnit.SECONDS)
@@ -45,6 +49,7 @@ public abstract class BaseInOutLineInterface {
 
     protected Flowable<String> findEvents(String event) {
         return lines
+                .doOnNext(l -> logger.trace("Event: " + l))
                 .filter(s -> s.startsWith(event))
                 .map(s -> s.substring(event.length()));
     }

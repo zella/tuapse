@@ -10,6 +10,8 @@ public interface Index {
 
     String insertTorrent(StorableTorrent t);
 
+    void insertTorrents(List<StorableTorrent> torrents);
+
     void createIndexIfNotExist();
 
     List<FoundTorrent<StorableTorrent>> search(String what);

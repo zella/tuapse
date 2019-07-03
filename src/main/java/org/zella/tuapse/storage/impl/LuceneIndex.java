@@ -55,6 +55,32 @@ public class LuceneIndex extends AbstractIndex {
     private final Analyzer analyzer = new SimpleAnalyzer();
 
 
+    private String insertTorrentNoCommit(IndexWriter writter, StorableTorrent t) throws IOException {
+        var doc = new Document();
+
+        doc.add(new StringField(FIELD_INFO_HASH, t.infoHash, Field.Store.YES));
+        doc.add(new TextField(FIELD_NAME, t.name, Field.Store.YES));
+
+        for (TFile f : t.files) {
+            doc.add(new TextField(FIELD_FILE, f.path, Field.Store.YES));
+        }
+
+        //sort by path for evaluation in query
+        var files = new ArrayList<>(t.files);
+        files.sort(Comparator.comparing(f -> f.path));
+
+        var metas = new ArrayList<FileMeta>();
+        for (int i = 0; i < files.size(); i++) {
+            var f = files.get(i);
+            metas.add(new FileMeta(i, f.index, f.length));
+        }
+
+        doc.add(new StoredField(FIELD_FILES, Json.mapper.writeValueAsString(metas)));
+
+        writter.updateDocument(new Term(FIELD_INFO_HASH, t.infoHash), doc);
+        return t.infoHash;
+    }
+
     @Override
     public synchronized String insertTorrent(StorableTorrent t) {
         try {
@@ -64,28 +90,8 @@ public class LuceneIndex extends AbstractIndex {
             indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
             IndexWriter writter = new IndexWriter(storageDir, indexWriterConfig);
 
-            var doc = new Document();
-
-            doc.add(new StringField(FIELD_INFO_HASH, t.infoHash, Field.Store.YES));
-            doc.add(new TextField(FIELD_NAME, t.name, Field.Store.YES));
-
-            for (TFile f : t.files) {
-                doc.add(new TextField(FIELD_FILE, f.path, Field.Store.YES));
-            }
-
-            //sort by path for evaluation in query
-            var files = new ArrayList<>(t.files);
-            files.sort(Comparator.comparing(f -> f.path));
-
-            var metas = new ArrayList<FileMeta>();
-            for (int i = 0; i < files.size(); i++) {
-                var f = files.get(i);
-                metas.add(new FileMeta(i, f.index, f.length));
-            }
-
-            doc.add(new StoredField(FIELD_FILES, Json.mapper.writeValueAsString(metas)));
-
-            writter.updateDocument(new Term(FIELD_INFO_HASH, t.infoHash), doc);
+            insertTorrentNoCommit(writter, t);
+            
             writter.commit();
             writter.close();
             return t.infoHash;
@@ -93,6 +99,26 @@ public class LuceneIndex extends AbstractIndex {
             throw new UncheckedIOException(e);
         }
 
+    }
+
+    @Override
+    public void insertTorrents(List<StorableTorrent> torrents) {
+        try {
+            //TODO seems like IndexWriter thread safe, but cannot share single directory
+            Directory storageDir = FSDirectory.open(dir);
+            IndexWriterConfig indexWriterConfig = new IndexWriterConfig(analyzer);
+            indexWriterConfig.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
+            IndexWriter writter = new IndexWriter(storageDir, indexWriterConfig);
+
+            for (StorableTorrent t : torrents) {
+                insertTorrentNoCommit(writter, t);
+            }            
+            
+            writter.commit();
+            writter.close();   
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override

@@ -60,6 +60,11 @@ public class EsIndex extends AbstractIndex {
         }
     }
 
+    @Override
+    public void insertTorrents(List<StorableTorrent> torrents) {
+        torrents.forEach(this::insertTorrent);
+    }
+
     public void createIndexIfNotExist() {
         try {
             GetIndexRequest req1 = new GetIndexRequest("torrents");
