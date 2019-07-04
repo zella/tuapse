@@ -9,6 +9,7 @@ import io.vertx.reactivex.core.http.HttpServer;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import io.vertx.reactivex.ext.web.handler.BodyHandler;
+import io.vertx.reactivex.ext.web.handler.StaticHandler;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -48,7 +49,9 @@ public class TuapseServer {
         Router router = Router.router(vertx);
 
         router.post().handler(BodyHandler.create());
-
+        router.get("/static/*").handler(StaticHandler.create()
+                .setFilesReadOnly(true)
+        );
         router.get("/").handler(ctx -> {
             //TODO ui different non java project
             Single.fromCallable(() -> IOUtils.toString(this.getClass().getResourceAsStream("/templates/index.template"),
@@ -88,14 +91,14 @@ public class TuapseServer {
                 }));
         router.get("/api/v1/generateTorrentFile").handler(ctx -> {
             Single.fromCallable(() -> ctx.queryParams().get("hash"))
-                    .flatMap(hash -> Subprocess.generateTorrentFile(hash).subscribeOn(Schedulers.io()))
+                    .flatMap(hash -> Subprocess.generateTorrentFile(hash).subscribeOn(TuapseSchedulers.webtorrentSearch()))
                     .subscribe(buffer -> ctx.response().end(Buffer.buffer(Base64.decodeBase64(buffer)))
                             , e -> {
                                 logger.error("Error", e);
                                 ctx.fail(e);
                             });
         });
-        router.get("/api/v1/search_no_eval_peers").handler(ctx -> {
+        router.get("/api/v1/search").handler(ctx -> {
             ctx.response().setChunked(true);
             Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(search::searchNoEvalPeers)
@@ -108,35 +111,6 @@ public class TuapseServer {
                             },
                             () -> ctx.response().end());
         });
-        router.get("/api/v1/search_eval_peers").handler(ctx -> {
-            ctx.response().setChunked(true);
-            Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(text -> search.searchEvalPeers(text, 4))
-                    .timeout(ReqTimeout, TimeUnit.SECONDS)
-                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
-                    .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))))
-                    .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),
-                            e -> {
-                                logger.error("Error", e);
-                                ctx.response().end();
-                            },
-                            () -> ctx.response().end());
-
-        });
-        router.get("/api/v1/search_file").handler(ctx -> {
-            Single.fromCallable(() -> SingleFileSearchInput.fromRequestParams(ctx.request().params()))
-                    .flatMap(p -> search.searchSingle(p.text, p.extensions))
-                    .timeout(ReqTimeout, TimeUnit.SECONDS)
-                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
-                    .doOnSuccess(r -> logger.debug("Found file: " + r.fileWithMeta.file.path))
-                    .subscribe(r -> ctx.response().end(Json.mapper.writeValueAsString(r.fileWithMeta)), e -> {
-                                logger.error("Error", e);
-                                ctx.fail(e);
-                            }
-                    );
-
-        });
-
 
         return vertx.createHttpServer().
                 requestHandler(router).rxListen(Port);

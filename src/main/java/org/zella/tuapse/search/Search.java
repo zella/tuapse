@@ -58,6 +58,11 @@ public class Search {
                 .map(List::of);
     }
 
+    /**
+     * * @deprecated reason - More simple - split raw search and peers evaluation in different http streams
+     *
+     */
+    @Deprecated
     public Observable<List<FoundTorrent<LiveTorrent>>> searchEvalPeers(String text, int buffer) {
         return Observable.merge(List.of(
                 Single.fromCallable(() -> index.search(text)).toObservable(),
@@ -79,6 +84,7 @@ public class Search {
                 .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))));
     }
 
+    @Deprecated
     public Single<FilteredTFile> searchSingle(String text, Optional<List<String>> exts) {
         return searchEvalPeers(text, 1).map(torrents -> {
             var filter = new FilesOnlyLuceneFilter(text, exts, 10);

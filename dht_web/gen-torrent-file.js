@@ -11,11 +11,13 @@ const torrentId = process.argv[2];
 
 client.add(torrentId, {path: dir}, function (torrent) {
 
-    torrent.destroy();
+    torrent.deselect(0, torrent.pieces.length - 1, false);
 
     Rimraf.sync(path.join(dir, torrent.infoHash));
 
     const buf = GenTorrentFile.toTorrentFile(torrent);
+
+    torrent.destroy();
 
     process.stdout.write("[torrentFile]" + buf.toString('base64'), () => process.exit());
 

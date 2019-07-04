@@ -7,22 +7,22 @@
     <title>Tuapse torrent search</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.js"
+            integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+            crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
+    <script type="text/javascript" src="/static/js/jsonpipe.js"></script>
 </head>
-
-<script src="https://code.jquery.com/jquery-3.2.1.js" integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
-        crossorigin="anonymous"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.1.2/handlebars.min.js"></script>
-<script src="https://github.com/eBay/jsonpipe/blob/master/jsonpipe.js"></script>
-
 
 <body>
 
 <template id="torrent-template">
     <li class="collection-item">
         <div class="row">
-            <div class="col s12 m8"><b>{{torrent.name}}</b> [Peers: {{torrent.numPeers}}]</div>
+            <div class="col s12 m8"><b>{{torrent.name}}</b> [Peers: <span style="color:red" id="{{torrent.infoHash}}">0</span> ]
+            </div>
             <div class="col s6 m2">
                 <a class="waves-effect waves-light btn-small" href="{{hrefFile}}" download="{{fileName}}">Torrent
                     file</a>
@@ -121,7 +121,7 @@
 
             //================
             progressEl.style.visibility = 'visible';
-            jsonpipe.flow(window.location.origin + "/api/v1/search_eval_peers?text=" + text, {
+            jsonpipe.flow(window.location.origin + "/api/v1/search?text=" + text, {
                 "delimiter": "\n", // String. The delimiter separating valid JSON objects; default is "\n\n"
                 "onHeaders": function (statusText, headers) {
                     // Do something with the headers and the statusText.
@@ -145,11 +145,35 @@
             //================
         };
 
-        function handleSearchChunk(torArr) {
+        function handleSearchChunk(torrents) {
             console.log("Receive chunk:");
-            console.log(torArr);
+            console.log(torrents);
             try {
-                var torrents = JSON.parse(torArr);
+                // const torrents = JSON.parse(torArr);
+
+                const hashes = torrents.map(function (t) {
+                    return t.torrent.infoHash;
+                });
+
+                $.ajax({
+                    url: '/api/v1/evalTorrents',
+                    type: 'post',
+                    dataType: 'json',
+                    data: JSON.stringify(hashes),
+                    success: function (torrents) {
+                        console.log("Eval peers:");
+                        console.log(torrents);
+                        torrents.forEach(function (torrent) {
+                            const el = $("#" + torrent.infoHash);
+                            el.html('<b>' + torrent.numPeers + '</b>');
+                            el.css('color', 'green');
+                        });
+                    },
+                    error: function (xhr) {
+                        console.log(xhr)
+                    }
+                });
+
                 torrents.forEach(function (torrent) {
                     torrent.fileBtnId = torrent.torrent.infoHash + "_f";
                     torrent.href = "magnet:?xt=urn:btih:" + torrent.torrent.infoHash;
@@ -165,7 +189,7 @@
 
                     torrent.highlights = highlights;
 
-                    var li = document.createElement('li'); // is a node
+                    const li = document.createElement('li'); // is a node
                     li.innerHTML = rendering(torrent);
                     torrentsEl.appendChild(li);
 

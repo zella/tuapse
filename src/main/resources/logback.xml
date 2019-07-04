@@ -19,6 +19,6 @@
 
     <logger name="io.netty" level="WARN" />
 
-    <logger name="org.zella.tuapse.subprocess.base.BaseInOutLineInterface" level="TRACE" />
+    <logger name="org.zella.tuapse.subprocess.base.BaseInOutLineInterface" level="DEBUG" />
 
 </configuration>
