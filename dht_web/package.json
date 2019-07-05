@@ -6,7 +6,7 @@
   "license": "MIT",
   "dependencies": {
     "dhtspider": "zella/dhtspider#master",
-    "webtorrent": "^0.103.1",
+    "webtorrent": "^0.104.0",
     "rimraf": "2.6.3",
     "dateformat": "3.0.3",
     "ipfs-pubsub-room": "1.4.1",

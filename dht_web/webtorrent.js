@@ -9,7 +9,14 @@ const dir = process.env.WEBTOR_SPIDER_DIR || "/tmp/webtorrent_spider/";
 
 const torrentId = process.argv[2];
 
+client.on('error', function (err) {
+    console.error(err);
+    process.exit(-1)
+});
+
 client.add(torrentId, {path: dir}, function (torrent) {
+
+    torrent.deselect(0, torrent.pieces.length - 1, false);
 
     const obj = {
         "infoHash": torrent.infoHash,

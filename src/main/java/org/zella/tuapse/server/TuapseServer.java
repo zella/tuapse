@@ -24,7 +24,6 @@ import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class TuapseServer {
 
@@ -33,6 +32,7 @@ public class TuapseServer {
     private static final int Port = Integer.parseInt(System.getenv().getOrDefault("HTTP_PORT", "9257"));
     private static final int ReqTimeout = Integer.parseInt(System.getenv().getOrDefault("REQUEST_TIMEOUT_SEC", "120"));
     private static final String TuapsePlayOrigin = (System.getenv().getOrDefault("TUAPSE_PLAY_ORIGIN", "N/A"));
+    private static final int MinimumPeerForFile = Integer.parseInt(System.getenv().getOrDefault("TUAPSE_FILE_MIN_PEERS", "1"));
 
     private final Importer importer;
     private final Search search;
@@ -100,6 +100,7 @@ public class TuapseServer {
         });
         router.get("/api/v1/search").handler(ctx -> {
             ctx.response().setChunked(true);
+            ctx.response().putHeader("content-type", "text/plain; charset=utf-8");
             Single.fromCallable(() -> ctx.queryParams().get("text"))
                     .flatMapObservable(search::searchNoEvalPeers)
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
@@ -110,6 +111,22 @@ public class TuapseServer {
                                 ctx.response().end();
                             },
                             () -> ctx.response().end());
+        });
+        router.get("/api/v1/search_file").handler(ctx -> {
+            Single.fromCallable(() -> SingleFileSearchInput.fromRequestParams(ctx.request().params()))
+                    .flatMap(p -> search.searchFileEvalPeers(p.text, p.extensions, MinimumPeerForFile))
+                    .timeout(ReqTimeout, TimeUnit.SECONDS)
+                    .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
+                    .doOnSuccess(r -> logger.debug("Found file: " + r.fileWithMeta.file.path))
+                    .subscribe(r -> {
+                                ctx.response().putHeader("content-type", "application/json; charset=utf-8");
+                                ctx.response().end(Json.mapper.writeValueAsString(r.fileWithMeta));
+                            }, e -> {
+                                logger.error("Error", e);
+                                ctx.fail(e);
+                            }
+                    );
+
         });
 
         return vertx.createHttpServer().

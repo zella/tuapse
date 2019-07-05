@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TuapseSchedulers {
 
-    private static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "4"));
+    private static final int WebtorrConcurency = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_CONCURRENCY", "8"));
 
     private static final int forSpider = Math.max(WebtorrConcurency / 4, 1);
     private static final int forSearch = WebtorrConcurency - forSpider;

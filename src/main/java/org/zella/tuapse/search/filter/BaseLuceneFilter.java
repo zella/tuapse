@@ -40,7 +40,7 @@ public abstract class BaseLuceneFilter {
     protected abstract Analyzer analyzer();
 
     public List<FilteredTFile> selectFiles(List<TFileWithMeta> files) {
-        logger.debug("Start filtering");
+        logger.trace("Start filtering");
         Map<String, TFileWithMeta> byHashIndex = files.stream().collect(Collectors.toMap(t -> t.hash + "_" + String.valueOf(t.file.index), t -> t));
         Directory memoryDir = null;
         try {
@@ -68,7 +68,7 @@ public abstract class BaseLuceneFilter {
             TopDocs docs = searcher.search(query(analyzer), count());
             ScoreDoc[] hits = docs.scoreDocs;
 
-            logger.debug("Found " + hits.length);
+            logger.trace("Found " + hits.length);
 
             List<FilteredTFile> out = new ArrayList<>();
 
@@ -76,7 +76,7 @@ public abstract class BaseLuceneFilter {
                 var hashIndex = (searcher.doc(hit.doc).get("hash_index"));
                 out.add(new FilteredTFile(byHashIndex.get(hashIndex), hit.score));
             }
-            logger.debug("End filtering");
+            logger.trace("End filtering");
             return out;
 
 

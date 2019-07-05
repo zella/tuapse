@@ -30,7 +30,7 @@ public class Search {
 
     private static final Logger logger = LoggerFactory.getLogger(TuapseServer.class);
 
-    private static final int MiminumSearchTime = Integer.parseInt(System.getenv().getOrDefault("SINGLE_SEARCH_WAIT_SEC", "10"));
+    private static final int MiminumSearchTime = Integer.parseInt(System.getenv().getOrDefault("FILE_SEARCH_STEP_SEC", "10"));
 
     private final Index index;
 
@@ -58,42 +58,22 @@ public class Search {
                 .map(List::of);
     }
 
-    /**
-     * * @deprecated reason - More simple - split raw search and peers evaluation in different http streams
-     *
-     */
-    @Deprecated
-    public Observable<List<FoundTorrent<LiveTorrent>>> searchEvalPeers(String text, int buffer) {
-        return Observable.merge(List.of(
-                Single.fromCallable(() -> index.search(text)).toObservable(),
-                ipfs.get().search(text, AbstractIndex.PageSize))
-        )
-                .doOnNext(r -> logger.debug("Search result before deduplicate: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
-                .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
-                .doOnNext(r -> logger.debug("Search result: " + r.stream().map(t -> t.torrent.infoHash).collect(Collectors.joining("|"))))
-                .flatMapIterable(t -> t)
-                //eval - fail safe
-                .flatMap(t ->
-                        //TODO test it
-                        importer.evalTorrentsData(List.of(t.torrent.infoHash), TuapseSchedulers.webtorrentSearch())
-                                .map(live -> FoundTorrent.fillWithPeers(List.of(t), List.of(live)))
-                )
-                .flatMapIterable(t -> t)
-                .buffer(3, TimeUnit.SECONDS, buffer)
-                .filter(t -> !t.isEmpty())
-                .doOnNext(r -> logger.debug("Search result with peers: " + r.stream().map(t -> t.torrent.name).collect(Collectors.joining("|"))));
-    }
-
-    @Deprecated
-    public Single<FilteredTFile> searchSingle(String text, Optional<List<String>> exts) {
-        return searchEvalPeers(text, 1).map(torrents -> {
+    public Single<FilteredTFile> searchFileEvalPeers(String text, Optional<List<String>> exts, int minimumPeers) {
+        return searchNoEvalPeers(text).map(torrents -> {
             var filter = new FilesOnlyLuceneFilter(text, exts, 10);
             List<TFileWithMeta> filesWithMeta = torrents.stream().flatMap(t -> t.torrent.files.stream().map(f -> new TFileWithMeta(f, t.torrent.infoHash))).collect(Collectors.toList());
             return filter.selectFiles(filesWithMeta);
-        })
-                .flatMapIterable(f -> f)
-                .buffer(MiminumSearchTime, TimeUnit.SECONDS) // minimum searchEvalPeers time. It's ok - if no items next buffer will in 10 * n, eg 10 20 30 sec searchEvalPeers
-                .filter(tf -> !tf.isEmpty())
+        }).flatMap(files -> {
+            logger.debug("Found files: " + files.size());
+            var hashes = files.stream().map(f -> f.fileWithMeta.hash).distinct().collect(Collectors.toList());
+            return importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch())
+                    .filter(liveTorrent -> liveTorrent.numPeers >= minimumPeers)
+                    .map(liveTorrent -> files.stream().filter(f -> liveTorrent.infoHash.equals(f.fileWithMeta.hash)).collect(Collectors.toList()))
+                    .filter(f -> !f.isEmpty())
+                    .doOnNext(withPeers -> logger.debug("Files with peers: " + withPeers.size()));
+        }).buffer(MiminumSearchTime, TimeUnit.SECONDS) // minimum searchEvalPeers time. It's ok - if no items next buffer will in 10 * n, eg 10 20 30 sec searchEvalPeers
+                .map(buffer -> Observable.fromIterable(buffer).flatMapIterable(b -> b).toList().blockingGet())
+                .filter(files -> !files.isEmpty())
                 .map(tf -> tf.stream().sorted(Comparator.comparing(o -> o.score)).collect(Collectors.toList()))
                 .firstOrError()
                 .map(ts -> ts.get(0));
