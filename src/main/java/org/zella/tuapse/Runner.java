@@ -115,7 +115,7 @@ public class Runner {
         })
                 //maybe another?
                 .doOnError(e -> search.ipfsUpdate(new IpfsDisabled()))
-                .retryWhen(throwables -> throwables.delay(5, TimeUnit.SECONDS))
+                .retryWhen(throwables -> throwables.delay(5, TimeUnit.MINUTES))
                 .subscribeOn(Schedulers.computation())
                 .observeOn(Schedulers.computation())
                 .subscribe();
