@@ -75,11 +75,7 @@ public class Search {
         }).buffer(MiminumSearchTime, TimeUnit.SECONDS) // minimum searchEvalPeers time. It's ok - if no items next buffer will in 10 * n, eg 10 20 30 sec searchEvalPeers
                 .map(buffer -> Observable.fromIterable(buffer).flatMapIterable(b -> b).toList().blockingGet())
                 .filter(files -> !files.isEmpty())
-                .map(tf -> {
-                    var l = tf.stream().sorted(Comparator.comparing(o -> o.score)).collect(Collectors.toList());
-                    Collections.reverse(l);
-                    return l;
-                })
+                .map(tf -> tf.stream().sorted(Comparator.comparing((FilteredTFile o) -> o.score).reversed()).collect(Collectors.toList()))
                 .firstOrError()
                 .map(ts -> ts.get(0));
     }
