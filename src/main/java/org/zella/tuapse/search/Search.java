@@ -19,6 +19,7 @@ import org.zella.tuapse.server.TuapseServer;
 import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -74,7 +75,11 @@ public class Search {
         }).buffer(MiminumSearchTime, TimeUnit.SECONDS) // minimum searchEvalPeers time. It's ok - if no items next buffer will in 10 * n, eg 10 20 30 sec searchEvalPeers
                 .map(buffer -> Observable.fromIterable(buffer).flatMapIterable(b -> b).toList().blockingGet())
                 .filter(files -> !files.isEmpty())
-                .map(tf -> tf.stream().sorted(Comparator.comparing(o -> o.score)).collect(Collectors.toList()))
+                .map(tf -> {
+                    var l = tf.stream().sorted(Comparator.comparing(o -> o.score)).collect(Collectors.toList());
+                    Collections.reverse(l);
+                    return l;
+                })
                 .firstOrError()
                 .map(ts -> ts.get(0));
     }
