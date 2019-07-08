@@ -37,7 +37,9 @@ lazy val root = (project in file("."))
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
     libraryDependencies += "com.google.truth" % "truth" % "0.44" % Test,
     libraryDependencies += "org.testcontainers" % "testcontainers" % "1.11.3" % Test,
-    libraryDependencies += "org.testcontainers" % "elasticsearch" % "1.11.3" % Test
+    libraryDependencies += "org.testcontainers" % "elasticsearch" % "1.11.3" % Test,
+    libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19" % Test
+
   )
 
 assemblyMergeStrategy in assembly := {

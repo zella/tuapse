@@ -4,22 +4,21 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.providers.TuapseSchedulers;
 import org.zella.tuapse.search.filter.impl.FilesOnlyLuceneFilter;
 import org.zella.tuapse.model.filter.FilteredTFile;
 import org.zella.tuapse.model.filter.TFileWithMeta;
-import org.zella.tuapse.importer.Importer;
+import org.zella.tuapse.importer.impl.DefaultImporter;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.index.FoundTorrent;
-import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.RxUtils;
 import org.zella.tuapse.server.TuapseServer;
 import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.storage.Index;
 
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -48,7 +47,7 @@ public class Search {
         ipfs.set(search);
     }
 
-    public Observable<List<FoundTorrent<StorableTorrent>>> searchNoEvalPeers(String text) {
+    public Observable<List<FoundTorrent<StorableTorrent>>> searchNoEvalPeers(String text, int buffer) {
         return Observable.merge(List.of(
                 Single.fromCallable(() -> index.search(text)).toObservable(),
                 ipfs.get().search(text, AbstractIndex.PageSize))
@@ -56,11 +55,11 @@ public class Search {
                 .serialize()
                 .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
                 .flatMapIterable(s -> s)
-                .map(List::of);
+                .buffer(buffer);
     }
 
     public Single<FilteredTFile> searchFileEvalPeers(String text, Optional<List<String>> exts, int minimumPeers) {
-        return searchNoEvalPeers(text).map(torrents -> {
+        return searchNoEvalPeers(text, 8).map(torrents -> {
             var filter = new FilesOnlyLuceneFilter(text, exts, 10);
             List<TFileWithMeta> filesWithMeta = torrents.stream().flatMap(t -> t.torrent.files.stream().map(f -> new TFileWithMeta(f, t.torrent.infoHash))).collect(Collectors.toList());
             return filter.selectFiles(filesWithMeta);

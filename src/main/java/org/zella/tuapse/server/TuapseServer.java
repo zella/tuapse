@@ -15,6 +15,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.importer.Importer;
+import org.zella.tuapse.importer.impl.DefaultImporter;
 import org.zella.tuapse.model.net.SingleFileSearchInput;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
@@ -102,7 +103,7 @@ public class TuapseServer {
             ctx.response().setChunked(true);
             ctx.response().putHeader("content-type", "text/plain; charset=utf-8");
             Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(search::searchNoEvalPeers)
+                    .flatMapObservable(text -> search.searchNoEvalPeers(text, 1))
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),

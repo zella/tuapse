@@ -22,7 +22,7 @@
     <li class="collection-item">
         <div class="row">
             <div class="col s12 m8"><b>{{torrent.name}}</b> [{{sizeHuman}}] [Peers: <span style="color:red"
-                                                                                               id="{{torrent.infoHash}}">0</span>
+                                                                                          id="{{torrent.infoHash}}">0</span>
                 ]
             </div>
             <div class="col s6 m2">
@@ -48,12 +48,13 @@
                             <h3 class="header">Select option</h3>
                             <ul class="collection">
                                 <li class="collection-item">
-                                    <a id="play_kodi{{../torrent.infoHash}}{{{this.index}}}" href="#">Play on
+                                    <a class="modal-close" id="play_kodi{{../torrent.infoHash}}{{{this.index}}}"
+                                       href="#">Play on
                                         kodi</a>
                                 </li>
                                 <li class="collection-item">
 
-                                    <a id="download_direct{{../torrent.infoHash}}{{{this.index}}}"
+                                    <a class="modal-close" id="download_direct{{../torrent.infoHash}}{{{this.index}}}"
                                        href="[TUAPSE_PLAY_ORIGIN]/api/v1/fetchFile?hash={{../torrent.infoHash}}&index={{this.index}}"
                                        download>Direct
                                         download</a>

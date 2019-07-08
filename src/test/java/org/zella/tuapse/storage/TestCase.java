@@ -12,6 +12,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 public class TestCase {
 
+
     public static void searchCase(Index es) throws InterruptedException {
 
         es.createIndexIfNotExist();

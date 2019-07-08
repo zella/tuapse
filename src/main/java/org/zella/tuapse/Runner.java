@@ -4,7 +4,7 @@ import io.reactivex.*;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zella.tuapse.importer.Importer;
+import org.zella.tuapse.importer.impl.DefaultImporter;
 import org.zella.tuapse.ipfs.impl.IpfsDisabled;
 import org.zella.tuapse.model.messages.TypedMessage;
 import org.zella.tuapse.model.messages.impl.SearchAnswer;
@@ -61,7 +61,7 @@ public class Runner {
         }
 
 
-        var importer = new Importer(index);
+        var importer = new DefaultImporter(index);
 
         var search = new Search(index, importer);
 
