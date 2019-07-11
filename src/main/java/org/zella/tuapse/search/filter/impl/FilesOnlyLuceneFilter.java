@@ -14,13 +14,12 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
+import org.zella.tuapse.model.filter.FilteredTFile;
 import org.zella.tuapse.search.filter.BaseLuceneFilter;
 import org.zella.tuapse.model.torrent.TFile;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Ищет файлы по полным путям файлов торрента. Т.е полный музыкальный альбом не вытащит
@@ -28,7 +27,7 @@ import java.util.Optional;
 public class FilesOnlyLuceneFilter extends BaseLuceneFilter {
 
     private final String text;
-    private final Optional<List<String>> ext;
+    private final Optional<Set<String>> ext;
     private final int n;
 
     private final Analyzer analyzer = new StandardAnalyzer();
@@ -36,7 +35,7 @@ public class FilesOnlyLuceneFilter extends BaseLuceneFilter {
 
     private static final String DELIMTER_SPACE = " ";
 
-    public FilesOnlyLuceneFilter(String text, Optional<List<String>> ext, int n) {
+    public FilesOnlyLuceneFilter(String text, Optional<Set<String>> ext, int n) {
         this.text = text;
         this.ext = ext;
         this.n = n;
@@ -76,19 +75,7 @@ public class FilesOnlyLuceneFilter extends BaseLuceneFilter {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
-
-        if (!ext.isPresent()) {
-            return textQuery;
-        } else {
-            var extQueryB = new BooleanQuery.Builder();
-            ext.get().forEach(e -> extQueryB.add(new BooleanClause(new TermQuery(new Term("ext", e.toLowerCase())), BooleanClause.Occur.SHOULD)));
-            var extQuery = extQueryB.build();
-
-            return new BooleanQuery.Builder()
-                    .add(new BooleanClause(textQuery, BooleanClause.Occur.MUST))
-                    .add(new BooleanClause(extQuery, BooleanClause.Occur.FILTER))
-                    .build();
-        }
+        return textQuery;
     }
 
     @Override
@@ -99,6 +86,15 @@ public class FilesOnlyLuceneFilter extends BaseLuceneFilter {
     @Override
     protected Analyzer analyzer() {
         return analyzer;
+    }
+
+    @Override
+    protected List<FilteredTFile> postFilter(List<FilteredTFile> files) {
+        if (ext.isPresent()) {
+            return files.stream()
+                    .filter(f -> (ext.get().contains(FilenameUtils.getExtension(f.fileWithMeta.file.path))))
+                    .collect(Collectors.toList());
+        } else return files;
     }
 
 }

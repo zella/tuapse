@@ -1,27 +1,20 @@
 package org.zella.tuapse.search;
 
 import io.reactivex.Observable;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.mockito.*;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.storage.Index;
-import org.zella.tuapse.storage.TestCase;
-import org.zella.tuapse.storage.impl.EsIndex;
-import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Matchers.*;
 
-import java.io.File;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.*;
 
 
 public class SearchTest {
@@ -57,7 +50,7 @@ public class SearchTest {
 
         var source = new Search(index, imported);
 
-        var result1 = source.searchFileEvalPeers("пелагея казак", Optional.of(List.of("wma", "m4a", "mp3", "wav")), 1).blockingGet();
+        var result1 = source.searchFileEvalPeers("пелагея казак", Optional.of(Set.of("wma", "m4a", "mp3", "wav")), 1).blockingGet();
 
         assertThat(result1.fileWithMeta.file.path).isEqualTo("/Пелагея/Крутое/казак.mp3");
 

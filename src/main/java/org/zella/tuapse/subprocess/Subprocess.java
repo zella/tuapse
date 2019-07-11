@@ -30,19 +30,12 @@ public class Subprocess {
     private static final String IpfsRoomExec = (System.getenv().getOrDefault("IPFSROOM_EXEC", "dht_web/ipfsroom.js"));
     public static final String WebTorrGenDir = (System.getenv().getOrDefault("WEBTOR_GEN_DIR", "/tmp/webtorrent_gen/"));
     public static final String WebTorrSpiderDir = (System.getenv().getOrDefault("WEBTOR_SPIDER_DIR", "/tmp/webtorrent_spider/"));
-    private static final int SpiderJumpTimeSec;
-
-    static {
-        SpiderJumpTimeSec = Integer.parseInt(System.getenv().getOrDefault("SPIDER_JUMP_SEC", "6"));
-        assert SpiderJumpTimeSec > 2;
-    }
 
     public static Flowable<String> spider() {
 
         List<String> cmd = List.of("node", SpiderExec);
 
         return RxNuProcessBuilder.fromCommand(cmd)
-                .withEnv(Map.of("JUMP_NODE_SEC", String.valueOf(SpiderJumpTimeSec)))
                 .asStdOut().toFlowable(BackpressureStrategy.BUFFER)
                 .compose(src -> Strings.decode(src, Charset.defaultCharset()))
                 .compose(src -> Strings.split(src, System.lineSeparator()))

@@ -22,6 +22,7 @@ import org.zella.tuapse.storage.Index;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -58,7 +59,7 @@ public class Search {
                 .buffer(buffer);
     }
 
-    public Single<FilteredTFile> searchFileEvalPeers(String text, Optional<List<String>> exts, int minimumPeers) {
+    public Single<FilteredTFile> searchFileEvalPeers(String text, Optional<Set<String>> exts, int minimumPeers) {
         return searchNoEvalPeers(text, 8).map(torrents -> {
             var filter = new FilesOnlyLuceneFilter(text, exts, 10);
             List<TFileWithMeta> filesWithMeta = torrents.stream().flatMap(t -> t.torrent.files.stream().map(f -> new TFileWithMeta(f, t.torrent.infoHash))).collect(Collectors.toList());

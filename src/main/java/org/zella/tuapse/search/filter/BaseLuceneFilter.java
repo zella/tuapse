@@ -77,8 +77,7 @@ public abstract class BaseLuceneFilter {
                 out.add(new FilteredTFile(byHashIndex.get(hashIndex), hit.score));
             }
             logger.trace("End filtering");
-            return out;
-
+            return postFilter(out);
 
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -89,6 +88,7 @@ public abstract class BaseLuceneFilter {
                 logger.error("Can't close memory index", e);
             }
         }
-
     }
+
+    protected abstract List<FilteredTFile> postFilter(List<FilteredTFile> files);
 }
