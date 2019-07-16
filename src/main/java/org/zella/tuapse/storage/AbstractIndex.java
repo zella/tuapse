@@ -18,7 +18,7 @@ public abstract class AbstractIndex implements Index {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    public static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "10"));
+    public static final int PageSize = Integer.parseInt(System.getenv().getOrDefault("PAGE_SIZE", "30"));
     protected static final long MaxIndexSizeGb = Long.parseLong(System.getenv().getOrDefault("MAX_INDEX_SIZE_GB", "10"));
     protected static final long MetaCacheExpireMin = Long.parseLong(System.getenv().getOrDefault("META_CACHE_EXPIRE_MIN", "3"));
 

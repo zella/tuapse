@@ -25,6 +25,7 @@ import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TuapseServer {
 
@@ -54,7 +55,6 @@ public class TuapseServer {
                 .setFilesReadOnly(true)
         );
         router.get("/").handler(ctx -> {
-            //TODO ui different non java project
             Single.fromCallable(() -> IOUtils.toString(this.getClass().getResourceAsStream("/templates/index.template"),
                     "UTF-8"))
                     .map(template -> template.replace("[TUAPSE_PLAY_ORIGIN]", TuapsePlayOrigin))
@@ -67,14 +67,14 @@ public class TuapseServer {
         });
         router.get("/healthcheck").handler(ctx -> ctx.response().end("ok"));
         router.post("/api/v1/import").handler(ctx -> readBody(ctx, new TypeReference<List<StorableTorrent>>() {
-        }).doOnSuccess(h -> logger.debug(h.toString()))
+        }).doOnSuccess(h -> logger.debug(h.stream().map(StorableTorrent::toString).collect(Collectors.joining(System.lineSeparator()))))
                 .flatMap(torrents -> importer.importTorrents(torrents).subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
                 }));
         router.post("/api/v1/evalTorrents").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
-        }).doOnSuccess(h -> logger.debug(h.toString()))
+        }).doOnSuccess(h -> logger.trace(h.toString()))
                 .flatMap(hashes -> importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch()).toList().subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);

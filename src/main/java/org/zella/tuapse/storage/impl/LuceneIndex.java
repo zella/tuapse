@@ -92,7 +92,7 @@ public class LuceneIndex extends AbstractIndex {
 
             insertTorrentNoCommit(writter, t);
             
-            writter.commit();
+            writter.flush();
             writter.close();
             return t.infoHash;
         } catch (IOException e) {
@@ -114,7 +114,7 @@ public class LuceneIndex extends AbstractIndex {
                 insertTorrentNoCommit(writter, t);
             }            
             
-            writter.commit();
+            writter.flush();
             writter.close();   
         } catch (IOException e) {
             throw new UncheckedIOException(e);
