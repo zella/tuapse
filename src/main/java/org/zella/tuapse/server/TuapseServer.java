@@ -16,11 +16,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zella.tuapse.importer.Importer;
 import org.zella.tuapse.importer.impl.DefaultImporter;
+import org.zella.tuapse.model.net.SearchInput;
 import org.zella.tuapse.model.net.SingleFileSearchInput;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.providers.TuapseSchedulers;
 import org.zella.tuapse.search.Search;
+import org.zella.tuapse.storage.AbstractIndex;
 import org.zella.tuapse.subprocess.Subprocess;
 
 import java.util.List;
@@ -102,8 +104,8 @@ public class TuapseServer {
         router.get("/api/v1/search").handler(ctx -> {
             ctx.response().setChunked(true);
             ctx.response().putHeader("content-type", "text/plain; charset=utf-8");
-            Single.fromCallable(() -> ctx.queryParams().get("text"))
-                    .flatMapObservable(text -> search.searchNoEvalPeers(text, 1))
+            Single.fromCallable(() -> SearchInput.fromRequestParams(ctx.request().params()))
+                    .flatMapObservable(p -> search.searchNoEvalPeers(p.text, 1, p.mode, p.page, AbstractIndex.PageSize))
                     .timeout(ReqTimeout, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())//home usage, schedulers io will ok
                     .subscribe(search -> ctx.response().write(Json.mapper.writeValueAsString(search) + System.lineSeparator()),

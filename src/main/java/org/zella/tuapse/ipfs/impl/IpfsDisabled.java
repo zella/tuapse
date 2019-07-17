@@ -5,6 +5,7 @@ import io.reactivex.Single;
 import org.zella.tuapse.ipfs.P2pInterface;
 import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.torrent.StorableTorrent;
+import org.zella.tuapse.search.SearchMode;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ public class IpfsDisabled implements P2pInterface {
     }
 
     @Override
-    public Observable<List<FoundTorrent<StorableTorrent>>> search(String text, int pageSize) {
+    public Observable<List<FoundTorrent<StorableTorrent>>> search(String text, SearchMode mode, int pageSize) {
         return Observable.empty();
     }
 

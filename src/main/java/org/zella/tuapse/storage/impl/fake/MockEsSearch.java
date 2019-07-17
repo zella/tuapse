@@ -5,6 +5,7 @@ import org.zella.tuapse.model.index.Highlight;
 import org.zella.tuapse.model.index.IndexMeta;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.StorableTorrent;
+import org.zella.tuapse.search.SearchMode;
 import org.zella.tuapse.storage.impl.EsIndex;
 
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
 public class MockEsSearch extends EsIndex {
 
     @Override
-    public List<FoundTorrent<StorableTorrent>> search(String what) {
+    public List<FoundTorrent<StorableTorrent>> search(String what, SearchMode mode, int page) {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {

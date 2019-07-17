@@ -48,10 +48,20 @@ public class Search {
         ipfs.set(search);
     }
 
-    public Observable<List<FoundTorrent<StorableTorrent>>> searchNoEvalPeers(String text, int buffer) {
+    /**
+     * Search. If page size > 1, only local search
+     *
+     * @param text     text to search
+     * @param buffer   result buffer
+     * @param mode     what field use to search
+     * @param page     num page, starts with 1
+     * @param pageSize page size
+     * @return found torrents
+     */
+    public Observable<List<FoundTorrent<StorableTorrent>>> searchNoEvalPeers(String text, int buffer, SearchMode mode, int page, int pageSize) {
         return Observable.merge(List.of(
-                Single.fromCallable(() -> index.search(text)).toObservable(),
-                ipfs.get().search(text, AbstractIndex.PageSize))
+                Single.fromCallable(() -> index.search(text, mode, page)).toObservable(),
+                page > 1 ? Observable.empty() : ipfs.get().search(text, mode, pageSize))
         )
                 .serialize()
                 .compose(RxUtils.distinctSequence(t -> t.torrent.infoHash))
@@ -60,7 +70,7 @@ public class Search {
     }
 
     public Single<FilteredTFile> searchFileEvalPeers(String text, Optional<Set<String>> exts, int minimumPeers) {
-        return searchNoEvalPeers(text, 8).map(torrents -> {
+        return searchNoEvalPeers(text, 8, SearchMode.FILES, 1, 100).map(torrents -> {
             var filter = new FilesOnlyLuceneFilter(text, exts, 10);
             List<TFileWithMeta> filesWithMeta = torrents.stream().flatMap(t -> t.torrent.files.stream().map(f -> new TFileWithMeta(f, t.torrent.infoHash))).collect(Collectors.toList());
             return filter.selectFiles(filesWithMeta);

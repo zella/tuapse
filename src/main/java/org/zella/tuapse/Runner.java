@@ -107,7 +107,7 @@ public class Runner {
                     .subscribeOn(Schedulers.io())
                     .onBackpressureBuffer(4, () -> logger.warn("Search to slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
-                    .flatMapSingle(req -> Single.fromCallable(() -> index.search(req.m.searchString, req.m.pageSize))
+                    .flatMapSingle(req -> Single.fromCallable(() -> index.search(req.m.searchString, req.m.mode, req.m.pageSize))
                             .flatMap(searchResult -> ipfs.searchAnswer(new TypedMessage<>(req.peerId, SearchAnswer.create(searchResult)))
                                     //TODO fix me, use completable
                                     .toSingleDefault("ok"))).ignoreElements();

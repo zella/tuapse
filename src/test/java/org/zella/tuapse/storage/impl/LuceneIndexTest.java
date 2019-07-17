@@ -18,7 +18,16 @@ public class LuceneIndexTest {
         var es = new LuceneIndex(dir);
 
         TestCase.searchCase(es);
+    }
 
+    @Test
+    public void searchPaginationTest() throws IOException, InterruptedException {
+
+        var dir = Files.createTempDirectory("tuapse");
+
+        var es = new LuceneIndex(dir);
+
+        TestCase.searchPaginationCase(es);
     }
 
     @Test

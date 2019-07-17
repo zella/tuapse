@@ -15,6 +15,7 @@ import org.zella.tuapse.model.messages.impl.SearchAnswer;
 import org.zella.tuapse.model.messages.impl.SearchAsk;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.search.SearchMode;
 import org.zella.tuapse.subprocess.base.BaseInOutLineInterface;
 
 import java.util.Collections;
@@ -82,7 +83,7 @@ public class IpfsInterface extends BaseInOutLineInterface implements P2pInterfac
     }
 
     @Override
-    public Observable<List<FoundTorrent<StorableTorrent>>> search(String text, int pageSize) {
+    public Observable<List<FoundTorrent<StorableTorrent>>> search(String text, SearchMode mode, int pageSize) {
         return getMyPeer().zipWith(getPeers().doOnError(e -> logger.error("SearchAsk failed", e)), (iam, they) -> {
                     Collections.shuffle(they.peers);
                     logger.debug("My peer id and peers evaluated");
@@ -94,7 +95,7 @@ public class IpfsInterface extends BaseInOutLineInterface implements P2pInterfac
                 //searchEvalPeers timeout
                 .flatMap(peer -> {
                     logger.debug("Request p2p searchEvalPeers to peer: " + peer);
-                    return searchAsk(new TypedMessage<>(peer, new SearchAsk(text, pageSize))).map(a -> a.m.torrents)
+                    return searchAsk(new TypedMessage<>(peer, new SearchAsk(text, pageSize, mode))).map(a -> a.m.torrents)
                             .timeout(P2pSearchTimeout, TimeUnit.SECONDS).toObservable().onErrorResumeNext(Observable.empty());
                 }, 4)
                 .doOnNext(f -> {

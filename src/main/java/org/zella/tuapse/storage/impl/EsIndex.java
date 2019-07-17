@@ -22,6 +22,7 @@ import org.zella.tuapse.model.index.Highlight;
 import org.zella.tuapse.model.index.IndexMeta;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
+import org.zella.tuapse.search.SearchMode;
 import org.zella.tuapse.storage.AbstractIndex;
 
 import java.io.IOException;
@@ -88,7 +89,9 @@ public class EsIndex extends AbstractIndex {
         }
     }
 
-    public List<FoundTorrent<StorableTorrent>> search(String what, int pageSize) {
+    //TODO support paginations in es
+    //TODO support search mode
+    public List<FoundTorrent<StorableTorrent>> search(String what, SearchMode mode, int page, int pageSize) {
         try {
             SearchRequest searchRequest = Requests.searchRequest("torrents");
 

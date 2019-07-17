@@ -24,7 +24,7 @@ public class SearchTest {
 
         var index = mock(Index.class);
 
-        when(index.search("пелагея казак")).thenReturn(List.of(
+        when(index.search("пелагея казак", SearchMode.FILES_AND_NAMES, 0)).thenReturn(List.of(
                 FoundTorrent.create(StorableTorrent.create(
                         "пелагея", "h1", List.of(
                                 TFile.create(0, "/Пелагея 2009/Тропы/тропы.mp3", -1),

@@ -19,6 +19,7 @@ import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.providers.Utils;
+import org.zella.tuapse.search.SearchMode;
 import org.zella.tuapse.storage.AbstractIndex;
 
 import javax.annotation.Nullable;
@@ -91,7 +92,7 @@ public class LuceneIndex extends AbstractIndex {
             IndexWriter writter = new IndexWriter(storageDir, indexWriterConfig);
 
             insertTorrentNoCommit(writter, t);
-            
+
             writter.flush();
             writter.close();
             return t.infoHash;
@@ -112,10 +113,10 @@ public class LuceneIndex extends AbstractIndex {
 
             for (StorableTorrent t : torrents) {
                 insertTorrentNoCommit(writter, t);
-            }            
-            
+            }
+
             writter.flush();
-            writter.close();   
+            writter.close();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -151,26 +152,50 @@ public class LuceneIndex extends AbstractIndex {
     }
 
     @Override
-    public synchronized List<FoundTorrent<StorableTorrent>> search(String what, int pageSize) {
+    public synchronized List<FoundTorrent<StorableTorrent>> search(String what, SearchMode mode, int page, int pageSize) {
+        if (page < 1)
+            page = 1;
         try {
             Directory storageDir = FSDirectory.open(dir);
             IndexReader reader = DirectoryReader.open(storageDir);
             IndexSearcher searcher = new IndexSearcher(reader);
 
-            var parserName = new QueryParser(FIELD_NAME, analyzer);
-            var parserFile = new QueryParser(FIELD_FILE, analyzer);
+            final Query query;
 
-            var both = new BooleanQuery.Builder();
-            both.add(new BooleanClause(parserName.parse(what.toLowerCase()), BooleanClause.Occur.SHOULD));
-            both.add(new BooleanClause(parserFile.parse(what.toLowerCase()), BooleanClause.Occur.SHOULD));
+            switch (mode) {
+                case NAMES:
+                    var parserName_ = new QueryParser(FIELD_NAME, analyzer);
+                    query = parserName_.parse(what.toLowerCase());
+                    break;
+                case FILES:
+                    var parserFile_ = new QueryParser(FIELD_FILE, analyzer);
+                    query = parserFile_.parse(what.toLowerCase());
+                    break;
+                case FILES_AND_NAMES:
+                    var parserName = new QueryParser(FIELD_NAME, analyzer);
+                    var parserFile = new QueryParser(FIELD_FILE, analyzer);
+                    var both = new BooleanQuery.Builder();
+                    both.add(new BooleanClause(parserName.parse(what.toLowerCase()), BooleanClause.Occur.SHOULD));
+                    both.add(new BooleanClause(parserFile.parse(what.toLowerCase()), BooleanClause.Occur.SHOULD));
+                    query = both.build();
+                    break;
+                default:
+                    query = null;
+            }
 
-            var query = both.build();
+            Objects.requireNonNull(query);
+            //TODO what is it
+            TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
+            int startIndex = (page - 1) * pageSize;
 
-            TopDocs docs = searcher.search(both.build(), Math.min(pageSize, PageSize));
+            searcher.search(query, collector);
+
+            TopDocs docs = collector.topDocs(startIndex, pageSize);
+
             var result = new ArrayList<FoundTorrent<StorableTorrent>>();
             for (ScoreDoc hit : docs.scoreDocs) {
                 var doc = searcher.doc(hit.doc);
-                var infoHash = doc.get(FIELD_INFO_HASH);
+                var infoHash = doc.get(FIELD_INFO_HASH).toLowerCase();
                 var name = doc.get(FIELD_NAME);
 
                 var sortedPaths = Arrays.stream(doc.getValues(FIELD_FILE))

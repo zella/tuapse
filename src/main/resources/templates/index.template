@@ -19,9 +19,9 @@
 <body>
 
 <template id="torrent-template">
-    <li class="collection-item">
+    <li class="collection-item" id="li_{{torrent.infoHash}}">
         <div class="row">
-            <div class="col s12 m8"><b>{{torrent.name}}</b> [{{sizeHuman}}] [Peers: <span style="color:red"
+            <div class="col s12 m8"><b>{{torrent.name}}</b> [{{sizeHuman}}] [Peers: <span style="color:black"
                                                                                           id="{{torrent.infoHash}}">0</span>
                 ]
             </div>
@@ -82,6 +82,28 @@
         <div class="col s6">Index size: <span id="torrentsSize">0</span></div>
     </div>
     <div class="row valign-wrapper">
+        <div class="col s4">
+            <label>
+                <input id="check_rem_no_peers" type="checkbox"/>
+                <span>Only with peers</span>
+            </label>
+        </div>
+        <div class="col s8">
+            <label>
+                <input name="search_mode" value="FILES" type="radio" checked/>
+                <span>Files only</span>
+            </label>
+            <label>
+                <input name="search_mode" value="NAMES" type="radio"/>
+                <span>Names only</span>
+            </label>
+            <label>
+                <input name="search_mode" value="FILES_AND_NAMES" type="radio"/>
+                <span>Both</span>
+            </label>
+        </div>
+    </div>
+    <div class="row valign-wrapper">
         <div class="col s9"><input id="searchText" class="input" type="text" placeholder="What want to find"></div>
         <div class="col s3">
             <button id="searchBtn" class="waves-effect waves-light btn">Search</button>
@@ -91,6 +113,11 @@
     <ul id="torrentsFound" class="collection">
 
     </ul>
+    <div class="row">
+        <div class="col s12">
+            <button id="searchMoreBtn" class="waves-effect waves-light btn" style="visibility: hidden">More</button>
+        </div>
+    </div>
 
 </div>
 
@@ -98,6 +125,9 @@
 
 
 <script>
+
+    var page = 1;
+
     var searchRequest;
     $(document).ready(function () {
         // $('.modal').modal();
@@ -112,40 +142,17 @@
             });
 
         var progressEl = document.getElementById('progress');
+        var moreButton = document.getElementById('searchMoreBtn');
         progressEl.style.visibility = 'hidden';
         var torrentsEl = document.getElementById('torrentsFound');
         var template = document.getElementById('torrent-template').innerHTML;
         var rendering = Handlebars.compile(template);
         searchBtn.onclick = function () {
-            if (searchRequest)
-                searchRequest.abort();
-            torrentsEl.innerHTML = '';
-            var text = document.getElementById("searchText").value;
-
-            //================
-            progressEl.style.visibility = 'visible';
-            jsonpipe.flow(window.location.origin + "/api/v1/search?text=" + text, {
-                "delimiter": "\n", // String. The delimiter separating valid JSON objects; default is "\n\n"
-                "onHeaders": function (statusText, headers) {
-                    // Do something with the headers and the statusText.
-                },
-                "success": handleSearchChunk,
-                "error": function (errorMsg) {
-                    // Something wrong happened, check the error message
-                },
-                "complete": function (statusText) {
-                    console.log(statusText);
-                    progressEl.style.visibility = 'hidden'
-                },
-                "timeout": 600000, // 10 min timeout
-                "method": "GET",
-                "headers": { // Object. An object of additional header key/value pairs to send along with request
-                    // "X-Requested-With": "XMLHttpRequest"
-                },
-                "data": "", // String. A serialized string to be sent in a POST/PUT request,
-                "withCredentials": true // Boolean. Send cookies when making cross-origin requests; default is true
-            });
-            //================
+            doSearch(1, true)
+        };
+        moreButton.onclick = function () {
+            page = page + 1;
+            doSearch(page, false)
         };
 
         function handleSearchChunk(torrents) {
@@ -164,12 +171,38 @@
                     dataType: 'json',
                     data: JSON.stringify(hashes),
                     success: function (torrents) {
+
+                        const hashesFound = torrents.map(function (t) {
+                            return t.infoHash;
+                        });
+
+                        let hashesNotFound = hashes.filter(x => !hashesFound.includes(x));
+
                         console.log("Eval peers:");
                         console.log(torrents);
+
                         torrents.forEach(function (torrent) {
                             const el = $("#" + torrent.infoHash);
                             el.html('<b>' + torrent.numPeers + '</b>');
                             el.css('color', 'green');
+                        });
+
+                        const removeNoPeersNode = $("#check_rem_no_peers:checked").val();
+
+                        console.log("CHECK")
+                        console.log(removeNoPeersNode)
+
+
+                        hashesNotFound.forEach(function (hash) {
+
+                            if (removeNoPeersNode) {
+                                $("#li_" + hash).remove();
+                            } else {
+                                const el = $("#" + hash);
+                                el.css('color', 'red');
+                            }
+
+
                         });
                     },
                     error: function (xhr) {
@@ -276,6 +309,50 @@
             return bytes.toFixed(1) + ' ' + units[u];
         }
 
+        function clearPaging() {
+            page = 1;
+            moreButton.style.visibility = 'hidden';
+        }
+
+        function doSearch(page, clearPage) {
+
+            const searchMode = $("input[name='search_mode']:checked").val();
+
+            if (clearPage)
+                clearPaging();
+            if (searchRequest)
+                searchRequest.abort();
+            torrentsEl.innerHTML = '';
+            var text = document.getElementById("searchText").value;
+
+            //================
+            progressEl.style.visibility = 'visible';
+
+            searchRequest = jsonpipe.flow(window.location.origin + "/api/v1/search?text=" + text + "&page=" + page + "&mode=" + searchMode, {
+                "delimiter": "\n", // String. The delimiter separating valid JSON objects; default is "\n\n"
+                "onHeaders": function (statusText, headers) {
+                    // Do something with the headers and the statusText.
+                },
+                "success": handleSearchChunk,
+                "error": function (errorMsg) {
+                    // Something wrong happened, check the error message
+                },
+                "complete": function (statusText) {
+                    console.log(statusText);
+                    progressEl.style.visibility = 'hidden';
+                    moreButton.style.visibility = 'visible';
+                },
+                "timeout": 600000, // 10 min timeout
+                "method": "GET",
+                "headers": { // Object. An object of additional header key/value pairs to send along with request
+                    // "X-Requested-With": "XMLHttpRequest"
+                },
+                "data": "", // String. A serialized string to be sent in a POST/PUT request,
+                "withCredentials": true // Boolean. Send cookies when making cross-origin requests; default is true
+            });
+            //================
+        }
+
         setInterval(function () {
             updP2pMeta();
         }, 60000); //1 min
@@ -287,6 +364,8 @@
         updIndexMeta();
         updP2pMeta();
     });
+
+
 </script>
 
 </html>
