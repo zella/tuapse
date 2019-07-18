@@ -31,6 +31,16 @@ public class LuceneIndexTest {
     }
 
     @Test
+    public void searchHighligthSortingTest() throws IOException, InterruptedException {
+
+        var dir = Files.createTempDirectory("tuapse");
+
+        var es = new LuceneIndex(dir);
+
+        TestCase.searchHighlightSortingCase(es);
+    }
+
+    @Test
     @Ignore
     public void spaceTest() throws IOException {
 

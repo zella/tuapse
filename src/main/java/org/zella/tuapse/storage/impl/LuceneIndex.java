@@ -138,14 +138,18 @@ public class LuceneIndex extends AbstractIndex {
     }
 
     @Nullable
-    private String getHighlightedField(Query query, String fieldName, String fieldValue) {
+    private ScoredHighlight getHighlightedField(Query query, String fieldName, String fieldValue) {
         Formatter formatter = new SimpleHTMLFormatter();
         QueryScorer queryScorer = new QueryScorer(query);
         Highlighter highlighter = new Highlighter(formatter, queryScorer);
         highlighter.setTextFragmenter(new SimpleSpanFragmenter(queryScorer, Integer.MAX_VALUE));
         highlighter.setMaxDocCharsToAnalyze(Integer.MAX_VALUE);
         try {
-            return highlighter.getBestFragment(this.analyzer, fieldName, fieldValue);
+            var fragment = highlighter.getBestFragment(this.analyzer, fieldName, fieldValue);
+            if (fragment != null)
+                return new ScoredHighlight(fragment, queryScorer.getFragmentScore());
+            else
+                return null;
         } catch (IOException | InvalidTokenOffsetsException e) {
             throw new RuntimeException(e);
         }
@@ -208,12 +212,12 @@ public class LuceneIndex extends AbstractIndex {
                     filesPath.put(i, path);
                 }
 
-                var highlightsByPath = new HashMap<String, String>();
+                var highlightsByPath = new HashMap<String, ScoredHighlight>();
                 filesPath.forEach((i, path) -> {
                     var highlight = getHighlightedField(query, FIELD_FILE, path);
                     if (highlight != null)
                         //change it if change Formatter
-                        highlightsByPath.put(highlight.replace("<B>", "").replace("</B>", ""), highlight);
+                        highlightsByPath.put(highlight.text.replace("<B>", "").replace("</B>", ""), highlight);
                 });
 
 
@@ -228,13 +232,14 @@ public class LuceneIndex extends AbstractIndex {
                     String path = filesPath.get(m.i);
                     var highlight = highlightsByPath.get(path);
                     if (highlight != null)
-                        highlights.add(Highlight.create(m.n, highlight, m.l));
+                        highlights.add(Highlight.create(m.n, highlight.text, m.l, highlight.score));
                 });
 
                 var torrent = StorableTorrent.create(name, infoHash, files);
 
-
-                result.add(FoundTorrent.create(torrent, highlights.stream().limit(highlightsLimit).collect(Collectors.toList()), hit.score));
+                result.add(FoundTorrent.create(torrent, highlights.stream()
+                        .sorted(Comparator.comparingDouble((Highlight o) -> o.score).reversed())
+                        .limit(highlightsLimit).collect(Collectors.toList()), hit.score));
 
             }
 
@@ -243,6 +248,16 @@ public class LuceneIndex extends AbstractIndex {
 
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    class ScoredHighlight {
+        public final String text;
+        public final float score;
+
+        ScoredHighlight(String text, float score) {
+            this.text = text;
+            this.score = score;
         }
     }
 

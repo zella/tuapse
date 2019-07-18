@@ -138,10 +138,10 @@ public class EsIndex extends AbstractIndex {
                         var unhtmled = highlightString.replace("<B>", "").replace("</B>", "");
                         var fileOpt = torrent.files.stream().filter(fi -> fi.path.equals(unhtmled)).findFirst();
                         if (fileOpt.isPresent())
-                            highlights.add(Highlight.create(fileOpt.get().index, highlightString, fileOpt.get().length));
+                            highlights.add(Highlight.create(fileOpt.get().index, highlightString, fileOpt.get().length, -1));
                         else {
                             logger.warn("Highlight error for: " + highlightString);
-                            highlights.add(Highlight.create(-1, highlightString, -1));
+                            highlights.add(Highlight.create(-1, highlightString, -1, -1));
                         }
                         logger.debug(highlightString);
                     }

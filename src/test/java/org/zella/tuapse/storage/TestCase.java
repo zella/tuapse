@@ -119,6 +119,30 @@ public class TestCase {
 
     }
 
+    public static void searchHighlightSortingCase(Index es) throws InterruptedException {
+
+        es.createIndexIfNotExist();
+
+        var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1);
+        var f2 = TFile.create(0, "/music/ДДТ/актриса весна/осень.mp3", 2);
+        var f3 = TFile.create(0, "/music/ДДТ/актриса весна/в последнюю осень.mp3", 3);
+        var f4 = TFile.create(0, "/music/ДДТ/всякое/попса.mp3", 4);
+
+
+        var t1 = StorableTorrent.create("ДДТ", "hash1", List.of(
+           f1,f2,f3,f4
+        ));
+
+        es.insertTorrents(List.of(t1));
+
+        var res = es.search("ддт актриса весна в последнюю осень", SearchMode.FILES, 1, 999999);
+        assertThat(res.get(0).highlights.get(0).length).isEqualTo(3);
+        assertThat(res.get(0).highlights.get(1).length).isEqualTo(2);
+        assertThat(res.get(0).highlights.get(2).length).isEqualTo(1);
+        assertThat(res.get(0).highlights.get(3).length).isEqualTo(4);
+    }
+
+
 
     private static StorableTorrent random() {
 
