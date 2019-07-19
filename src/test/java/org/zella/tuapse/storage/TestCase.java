@@ -1,12 +1,12 @@
 package org.zella.tuapse.storage;
 
-import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.search.SearchMode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -19,22 +19,22 @@ public class TestCase {
 
         es.createIndexIfNotExist();
 
-        var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1000);
-        var f2 = TFile.create(1, "sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd", 1000);
-        var f3 = TFile.create(8, "/music/ДДТ/в последнюю осень.mp3", 1000);
-        var f3a = TFile.create(3, "NO DDT) HERE", 1000);
+        var f1 = TFile.create("/music/ДДТ/осень.mp3", 1000);
+        var f2 = TFile.create("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/ДДТ/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd", 1000);
+        var f3 = TFile.create("/music/ДДТ/в последнюю осень.mp3", 1000);
+        var f3a = TFile.create("NO DDT) HERE", 1000);
         var t1 = StorableTorrent.create("ДДТ дискография", "hash1", List.of(f1, f2, f3, f3a));
 
-        var f4 = TFile.create(0, "/music/БИ 2/01.полковник.mp3", 1000);
+        var f4 = TFile.create("/music/БИ 2/01.полковник.mp3", 1000);
         var t2 = StorableTorrent.create("БИ 2", "hash2", List.of(f4));
 
-        var f5 = TFile.create(0, "/films/oscar/Зеленый Слоник.3gp", 1000);
+        var f5 = TFile.create("/films/oscar/Зеленый Слоник.3gp", 1000);
         var t3 = StorableTorrent.create("Зеленый слоник", "hash3", List.of(f5));
 
-        var f6 = TFile.create(0, "/films/good/forest_gamp.avi", 1000);
+        var f6 = TFile.create("/films/good/forest_gamp.avi", 1000);
         var t4 = StorableTorrent.create("Gamp", "hash4", List.of(f6));
 
-        var f7 = TFile.create(0, "SOmeFile.lol", 1000);
+        var f7 = TFile.create("SOmeFile.lol", 1000);
         var t5 = StorableTorrent.create("Хроники: терминатор, возвращение легенды", "hash5", List.of(f7));
 
         es.insertTorrent(t1);
@@ -50,11 +50,12 @@ public class TestCase {
         assertThat(search1.size()).isEqualTo(1);
         assertThat(search1.get(0).highlights.size()).isEqualTo(3);
 
-        //test highlight and restoring file index(number) from index
-        assertThat(search1.get(0).highlights.stream().filter(h -> h.path.equals("/music/<B>ДДТ</B>/в последнюю осень.mp3")).findFirst().get().index).isEqualTo(8);
-        assertThat(search1.get(0).highlights.stream().filter(h -> h.path.equals("/music/<B>ДДТ</B>/осень.mp3")).findFirst().get().index).isEqualTo(0);
+        //test highlight
+        assertThat(search1.get(0).highlights.stream().filter(h -> h.pathFormatted.equals("/music/<B>ДДТ</B>/в последнюю осень.mp3")).findFirst()).isNotEqualTo(Optional.empty());
+        assertThat(search1.get(0).highlights.stream().filter(h -> h.path.equals("/music/ДДТ/в последнюю осень.mp3")).findFirst()).isNotEqualTo(Optional.empty());
+        assertThat(search1.get(0).highlights.stream().filter(h -> h.pathFormatted.equals("/music/<B>ДДТ</B>/осень.mp3")).findFirst()).isNotEqualTo(Optional.empty());
         assertThat(search1.get(0).highlights.stream()
-                .filter(h -> h.path.equals("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/<B>ДДТ</B>/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd")).findFirst().get().index).isEqualTo(1);
+                .filter(h -> h.pathFormatted.equals("sdfsdfaasd fafd sfa dsf dsaasdf afsd fd sa/music/<B>ДДТ</B>/01.актриса весна.mp3 aa sdf fdasf dsf dsfd sfd")).findFirst()).isNotEqualTo(Optional.empty());
 
         var search2 = es.search("полковник", SearchMode.FILES_AND_NAMES, 0);
         assertThat(search2.size()).isEqualTo(1);
@@ -123,14 +124,14 @@ public class TestCase {
 
         es.createIndexIfNotExist();
 
-        var f1 = TFile.create(0, "/music/ДДТ/осень.mp3", 1);
-        var f2 = TFile.create(0, "/music/ДДТ/актриса весна/осень.mp3", 2);
-        var f3 = TFile.create(0, "/music/ДДТ/актриса весна/в последнюю осень.mp3", 3);
-        var f4 = TFile.create(0, "/music/ДДТ/всякое/попса.mp3", 4);
+        var f1 = TFile.create("/music/ДДТ/осень.mp3", 1);
+        var f2 = TFile.create("/music/ДДТ/актриса весна/осень.mp3", 2);
+        var f3 = TFile.create("/music/ДДТ/актриса весна/в последнюю осень.mp3", 3);
+        var f4 = TFile.create("/music/ДДТ/всякое/попса.mp3", 4);
 
 
         var t1 = StorableTorrent.create("ДДТ", "hash1", List.of(
-           f1,f2,f3,f4
+                f1, f2, f3, f4
         ));
 
         es.insertTorrents(List.of(t1));
@@ -143,15 +144,13 @@ public class TestCase {
     }
 
 
-
     private static StorableTorrent random() {
 
         var filesCount = ThreadLocalRandom.current().nextInt(199, 200);
         var files = new ArrayList<TFile>();
 
         for (int i = 0; i < filesCount; i++) {
-            files.add(TFile.create(ThreadLocalRandom.current().nextInt(0, 100),
-                    UUID.randomUUID().toString() + ", " + UUID.randomUUID().toString() + ',' + UUID.randomUUID().toString(),
+            files.add(TFile.create(UUID.randomUUID().toString() + ", " + UUID.randomUUID().toString() + ',' + UUID.randomUUID().toString(),
                     1000));
         }
 

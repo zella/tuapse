@@ -1,5 +1,6 @@
 package org.zella.tuapse.importer.impl;
 
+import com.github.zella.rxprocess2.errors.ProcessTimeoutException;
 import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Scheduler;
@@ -32,7 +33,11 @@ public class DefaultImporter implements Importer {
                 .flatMap(h -> Subprocess.webtorrent(h)
                         .doOnSuccess(t -> logger.debug("Peers: [" + t.numPeers + "] " + t.name))
                         .subscribeOn(sc)
-                        .toObservable().onErrorResumeNext(Observable.empty()));
+                        .toObservable()
+                        .doOnError(e -> {
+                            if (!(e instanceof ProcessTimeoutException)) logger.error("Error eval torrent: ", e);
+                        })
+                        .onErrorResumeNext(Observable.empty()));
     }
 
     @Override

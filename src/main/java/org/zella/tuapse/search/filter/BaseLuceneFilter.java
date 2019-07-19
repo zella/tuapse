@@ -1,5 +1,7 @@
 package org.zella.tuapse.search.filter;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -22,9 +24,7 @@ import org.zella.tuapse.model.torrent.TFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class BaseLuceneFilter {
@@ -41,7 +41,13 @@ public abstract class BaseLuceneFilter {
 
     public List<FilteredTFile> selectFiles(List<TFileWithMeta> files) {
         logger.trace("Start filtering");
-        Map<String, TFileWithMeta> byHashIndex = files.stream().collect(Collectors.toMap(t -> t.hash + "_" + String.valueOf(t.file.index), t -> t));
+        var sortedByPaths = files.stream().sorted(Comparator.comparing(f -> f.file.path)).collect(Collectors.toList());
+        BiMap<Integer, String> pathsByPosition = HashBiMap.create();
+        for (int i = 0; i < sortedByPaths.size(); i++) {
+            var path = sortedByPaths.get(i);
+            pathsByPosition.put(i, path.file.path);
+        }
+        Map<String, TFileWithMeta> byHashIndex = files.stream().collect(Collectors.toMap(t -> t.hash + "_" + String.valueOf(pathsByPosition.inverse().get(t.file.path)), t -> t));
         Directory memoryDir = null;
         try {
             memoryDir = new ByteBuffersDirectory();
@@ -51,7 +57,7 @@ public abstract class BaseLuceneFilter {
             IndexWriter writter = new IndexWriter(memoryDir, indexWriterConfig);
             files.forEach(file -> {
                 Document document = searchableDocument(file.file);
-                document.add(new StringField("hash_index", file.hash + "_" + String.valueOf(file.file.index), Field.Store.YES));
+                document.add(new StringField("hash_index", file.hash + "_" + String.valueOf(pathsByPosition.inverse().get(file.file.path)), Field.Store.YES));
                 try {
                     writter.addDocument(document);
                 } catch (IOException e) {

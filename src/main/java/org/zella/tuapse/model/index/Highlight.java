@@ -4,17 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class Highlight {
 
-    public int index;
     public String path;
-
+    public String pathFormatted;
     public long length;
+
     @JsonIgnore
     public float score;
 
 
-    public Highlight(int index, String path, long length, float score) {
-        this.index = index;
+    public Highlight(String path, String pathFormatted, long length, float score) {
         this.path = path;
+        this.pathFormatted = pathFormatted;
         this.length = length;
         this.score = score;
     }
@@ -22,7 +22,7 @@ public class Highlight {
     public Highlight() {
     }
 
-    public static Highlight create(int index, String path, long length, float score) {
-        return new Highlight(index, path, length, score);
+    public static Highlight create(String path, String pathFormatter, long length, float score) {
+        return new Highlight(path, pathFormatter, length, score);
     }
 }

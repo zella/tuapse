@@ -38,24 +38,24 @@
             {{#each highlights}}
             <li class="collection-item ">
                 <div class="row">
-                    <a class="modal-trigger col m10" href="#{{this.path}}">{{{this.path}}}</a>
+                    <a class="modal-trigger col m10" href="#{{this.pathFormatted}}">{{{this.pathFormatted}}}</a>
                     <div class="col m2">Size: {{this.humanSize}}</div>
                 </div>
-                <div id="{{{this.path}}}" class="modal bottom-sheet">
+                <div id="{{{this.pathFormatted}}}" class="modal bottom-sheet">
                     <div class="modal-content">
 
                         <div class="modal-content">
                             <h3 class="header">Select option</h3>
                             <ul class="collection">
                                 <li class="collection-item">
-                                    <a class="modal-close" id="play_kodi{{../torrent.infoHash}}{{{this.index}}}"
+                                    <a class="modal-close" id="play_kodi{{{this.pathId}}}"
                                        href="#">Play on
                                         kodi</a>
                                 </li>
                                 <li class="collection-item">
 
-                                    <a class="modal-close" id="download_direct{{../torrent.infoHash}}{{{this.index}}}"
-                                       href="[TUAPSE_PLAY_ORIGIN]/api/v1/fetchFile?hash={{../torrent.infoHash}}&index={{this.index}}"
+                                    <a class="modal-close" id="download_direct{{{this.pathId}}}"
+                                       href="[TUAPSE_PLAY_ORIGIN]/api/v1/fetchFile?hash={{../torrent.infoHash}}&path={{this.path}}"
                                        download>Direct
                                         download</a>
                                 </li>
@@ -178,8 +178,8 @@
 
                         let hashesNotFound = hashes.filter(x => !hashesFound.includes(x));
 
-                        console.log("Eval peers:");
-                        console.log(torrents);
+                        // console.log("Eval peers:");
+                        // console.log(torrents);
 
                         torrents.forEach(function (torrent) {
                             const el = $("#" + torrent.infoHash);
@@ -189,12 +189,7 @@
 
                         const removeNoPeersNode = $("#check_rem_no_peers:checked").val();
 
-                        console.log("CHECK")
-                        console.log(removeNoPeersNode)
-
-
                         hashesNotFound.forEach(function (hash) {
-
                             if (removeNoPeersNode) {
                                 $("#li_" + hash).remove();
                             } else {
@@ -223,6 +218,7 @@
 
                     highlights = torrent.highlights.map(function (file) {
                         file.humanSize = humanFileSize(file.length, false);
+                        file.pathId = torrent.torrent.infoHash + hashCode(file.path);
                         return file;
                     });
 
@@ -239,19 +235,20 @@
                     }).forEach(function (file) {
                         //play, download etc links
                         console.log(file);
-                        $("#play_kodi" + torrent.torrent.infoHash + file.index).click(function () {
+                        $("#play_kodi" + torrent.torrent.infoHash + hashCode(file.path)).click(function () {
+                            console.log("Play called");
                             $.ajax({
                                 url: '[TUAPSE_PLAY_ORIGIN]/api/v1/play',
                                 type: 'POST',
                                 crossDomain: true,
                                 data: JSON.stringify({
                                     hash: torrent.torrent.infoHash,
-                                    index: file.index,
+                                    path: file.path,
                                     streaming: 'xbmc'
                                 }),
                                 contentType: 'application/json; charset=utf-8',
                                 dataType: 'json',
-                                async: false,
+                                async: true,
                                 success: function (data) {
                                     M.toast({html: 'Playing on kodi...'}) //TODO file name only
                                 }
@@ -307,6 +304,11 @@
                 ++u;
             } while (Math.abs(bytes) >= thresh && u < units.length - 1);
             return bytes.toFixed(1) + ' ' + units[u];
+        }
+
+        function hashCode(str) {
+            return str.split('').reduce((prevHash, currVal) =>
+                (((prevHash << 5) - prevHash) + currVal.charCodeAt(0)) | 0, 0);
         }
 
         function clearPaging() {

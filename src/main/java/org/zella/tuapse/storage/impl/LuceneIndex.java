@@ -1,6 +1,8 @@
 package org.zella.tuapse.storage.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.*;
@@ -15,8 +17,8 @@ import org.apache.lucene.store.FSDirectory;
 import org.zella.tuapse.model.index.FoundTorrent;
 import org.zella.tuapse.model.index.Highlight;
 import org.zella.tuapse.model.index.IndexMeta;
-import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.model.torrent.StorableTorrent;
+import org.zella.tuapse.model.torrent.TFile;
 import org.zella.tuapse.providers.Json;
 import org.zella.tuapse.providers.Utils;
 import org.zella.tuapse.search.SearchMode;
@@ -73,7 +75,7 @@ public class LuceneIndex extends AbstractIndex {
         var metas = new ArrayList<FileMeta>();
         for (int i = 0; i < files.size(); i++) {
             var f = files.get(i);
-            metas.add(new FileMeta(i, f.index, f.length));
+            metas.add(new FileMeta(i, f.length));
         }
 
         doc.add(new StoredField(FIELD_FILES, Json.mapper.writeValueAsString(metas)));
@@ -206,41 +208,37 @@ public class LuceneIndex extends AbstractIndex {
                         .sorted(Comparator.comparing(f -> f)).collect(Collectors.toList());
 
                 //<Sorting position, Path>
-                Map<Integer, String> filesPath = new HashMap<>();
+                BiMap<Integer, String> pathsByPosition = HashBiMap.create();
                 for (int i = 0; i < sortedPaths.size(); i++) {
                     var path = sortedPaths.get(i);
-                    filesPath.put(i, path);
+                    pathsByPosition.put(i, path);
                 }
 
                 var highlightsByPath = new HashMap<String, ScoredHighlight>();
-                filesPath.forEach((i, path) -> {
+                pathsByPosition.forEach((i, path) -> {
                     var highlight = getHighlightedField(query, FIELD_FILE, path);
                     if (highlight != null)
                         //change it if change Formatter
                         highlightsByPath.put(highlight.text.replace("<B>", "").replace("</B>", ""), highlight);
                 });
 
-
                 List<FileMeta> filesMeta = Json.mapper.readValue(doc.get(FIELD_FILES), new TypeReference<List<FileMeta>>() {
                 });
 
-                var files = filesMeta.stream().map(m -> TFile.create(Math.toIntExact(m.n), filesPath.get(m.i), m.l))
-                        .collect(Collectors.toList());
+                var files = filesMeta.stream().map(m -> TFile.create(pathsByPosition.get(m.i), m.l)).collect(Collectors.toList());
 
                 var highlights = new ArrayList<Highlight>();
-                filesMeta.forEach(m -> {
-                    String path = filesPath.get(m.i);
+                filesMeta.forEach(meta -> {
+                    String path = pathsByPosition.get(meta.i);
                     var highlight = highlightsByPath.get(path);
                     if (highlight != null)
-                        highlights.add(Highlight.create(m.n, highlight.text, m.l, highlight.score));
+                        highlights.add(Highlight.create(path, highlight.text, meta.l, highlight.score));
                 });
 
                 var torrent = StorableTorrent.create(name, infoHash, files);
 
-                result.add(FoundTorrent.create(torrent, highlights.stream()
-                        .sorted(Comparator.comparingDouble((Highlight o) -> o.score).reversed())
+                result.add(FoundTorrent.create(torrent, highlights.stream().sorted(Comparator.comparingDouble((Highlight o) -> o.score).reversed())
                         .limit(highlightsLimit).collect(Collectors.toList()), hit.score));
-
             }
 
             return result;
@@ -264,13 +262,10 @@ public class LuceneIndex extends AbstractIndex {
     static class FileMeta {
         //sorting position
         public int i;
-        //index in torrent
-        public int n;
         public long l;
 
-        public FileMeta(int sortingPosition, int index, long length) {
+        public FileMeta(int sortingPosition, long length) {
             this.i = sortingPosition;
-            this.n = index;
             this.l = length;
         }
 

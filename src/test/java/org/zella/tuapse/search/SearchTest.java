@@ -27,16 +27,16 @@ public class SearchTest {
         when(index.search("пелагея казак", SearchMode.FILES_AND_NAMES, 0)).thenReturn(List.of(
                 FoundTorrent.create(StorableTorrent.create(
                         "пелагея", "h1", List.of(
-                                TFile.create(0, "/Пелагея 2009/Тропы/тропы.mp3", -1),
-                                TFile.create(1, "/Пелагея/Крутое/казак.mp3", -1),
-                                TFile.create(2, "/Пелагея/Крутое/вишня.mp3", -1)
+                                TFile.create("/Пелагея 2009/Тропы/тропы.mp3", -1),
+                                TFile.create("/Пелагея/Крутое/казак.mp3", -1),
+                                TFile.create("/Пелагея/Крутое/вишня.mp3", -1)
                         )), List.of(), -1
                 ),
                 FoundTorrent.create(StorableTorrent.create(
                         "пелагея", "h2", List.of(
-                                TFile.create(0, "/Пелагея 2111/1/тропы.wav", -1),
-                                TFile.create(1, "/Пелагея/1/демо.m4a", -1),
-                                TFile.create(2, "/Пелагея/1/мамка.wma", -1)
+                                TFile.create("/Пелагея 2111/1/тропы.wav", -1),
+                                TFile.create("/Пелагея/1/демо.m4a", -1),
+                                TFile.create("/Пелагея/1/мамка.wma", -1)
                         )), List.of(), -1
                 ))
         );

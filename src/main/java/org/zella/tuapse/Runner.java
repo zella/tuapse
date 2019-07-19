@@ -115,9 +115,8 @@ public class Runner {
         })
                 //maybe another?
                 .doOnError(e -> search.ipfsUpdate(new IpfsDisabled()))
-                .retryWhen(throwables -> throwables.delay(5, TimeUnit.MINUTES))
+                .retryWhen(throwables -> throwables.delay(8, TimeUnit.MINUTES))
                 .subscribeOn(Schedulers.computation())
-                .observeOn(Schedulers.computation())
                 .subscribe();
 
         server.listen().subscribe(s -> logger.info("Server started at " + s.actualPort() + " port"));

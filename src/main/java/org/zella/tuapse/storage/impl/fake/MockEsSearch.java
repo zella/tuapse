@@ -20,11 +20,11 @@ public class MockEsSearch extends EsIndex {
             e.printStackTrace();
         }
         return List.of(FoundTorrent.create(StorableTorrent.create("Большой длинный торрент", "EE923D0EC37ED43D689BFBAD06E845DCF8353515",
-                List.of(TFile.create(0, "/ddt/osen.mp3", 999))),
-                List.of(Highlight.create(1, "asd <B> asd asd </B> asd", 999, -1)), 9.3f),
+                List.of(TFile.create( "/ddt/osen.mp3", 999))),
+                List.of(Highlight.create("asd asd asd asd", "asd <B> asd asd </B> asd", 999, -1)), 9.3f),
                 FoundTorrent.create(StorableTorrent.create("Большой длинный торрент 2", "EE923D0EC37ED43D689BFBAD06E845DCF8353519",
-                        List.of(TFile.create(0, "/ddt/osen.mp3", 999), TFile.create(1, "/ddt/osen2.mp3", 999999))),
-                        List.of(Highlight.create(0, "asd <B> asd asd </B> asd", 12356564123123123L, -1), Highlight.create(1, "Привет <B> от подсветки</B> а тут нет",400000000000000L, -1)), 9.3f));
+                        List.of(TFile.create( "/ddt/osen.mp3", 999), TFile.create( "/ddt/osen2.mp3", 999999))),
+                        List.of(Highlight.create("asd asd asd asd", "asd <B> asd asd </B> asd", 12356564123123123L, -1), Highlight.create("Привет от подсветки а тут нет", "Привет <B> от подсветки</B> а тут нет",400000000000000L, -1)), 9.3f));
     }
 
     @Override
