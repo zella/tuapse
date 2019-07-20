@@ -77,7 +77,7 @@ public class TuapseServer {
                 }));
         router.post("/api/v1/evalTorrents").handler(ctx -> readBody(ctx, new TypeReference<List<String>>() {
         }).doOnSuccess(h -> logger.trace(h.toString()))
-                .flatMap(hashes -> importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch()).toList().subscribeOn(Schedulers.io()))
+                .flatMap(hashes -> importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch).toList().subscribeOn(Schedulers.io()))
                 .subscribe(im -> ctx.response().end(Json.mapper.writeValueAsString(im)), e -> {
                     logger.error("Error", e);
                     ctx.fail(e);
@@ -94,7 +94,7 @@ public class TuapseServer {
                 }));
         router.get("/api/v1/generateTorrentFile").handler(ctx -> {
             Single.fromCallable(() -> ctx.queryParams().get("hash"))
-                    .flatMap(hash -> Subprocess.generateTorrentFile(hash).subscribeOn(TuapseSchedulers.webtorrentSearch()))
+                    .flatMap(hash -> Subprocess.generateTorrentFile(hash).subscribeOn(TuapseSchedulers.webtorrentSearch))
                     .subscribe(buffer -> ctx.response().end(Buffer.buffer(Base64.decodeBase64(buffer)))
                             , e -> {
                                 logger.error("Error", e);

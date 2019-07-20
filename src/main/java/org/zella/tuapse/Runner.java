@@ -74,7 +74,7 @@ public class Runner {
                     .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
                     //TODO test it
-                    .flatMap(hash -> Subprocess.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider())
+                    .flatMap(hash -> Subprocess.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider)
                             .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
                             .toFlowable()
                             .doOnError(throwable -> logger.warn(throwable.getMessage()))

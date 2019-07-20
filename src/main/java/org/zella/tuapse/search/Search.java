@@ -77,7 +77,7 @@ public class Search {
         }).flatMap(files -> {
             logger.debug("Found files: " + files.size());
             var hashes = files.stream().map(f -> f.fileWithMeta.hash).distinct().collect(Collectors.toList());
-            return importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch())
+            return importer.evalTorrentsData(hashes, TuapseSchedulers.webtorrentSearch)
                     .filter(liveTorrent -> liveTorrent.numPeers >= minimumPeers)
                     .map(liveTorrent -> files.stream().filter(f -> liveTorrent.infoHash.equals(f.fileWithMeta.hash)).collect(Collectors.toList()))
                     .filter(f -> !f.isEmpty())
