@@ -8,6 +8,7 @@ import io.reactivex.Flowable;
 import io.reactivex.Observer;
 import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,7 @@ public abstract class BaseInOutLineInterface {
 
     protected final int eventWaitTimeout;
 
-    protected final Observer<byte[]> stdIn;
+    protected final Subscriber<byte[]> stdIn;
 
     protected final Single<Exit> exit;
 
