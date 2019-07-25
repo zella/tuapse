@@ -1,6 +1,7 @@
 package org.zella.tuapse.storage.impl;
 
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -11,6 +12,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import java.io.File;
 
+@Ignore
 public class EsTest {
 
     @ClassRule
@@ -24,6 +26,7 @@ public class EsTest {
 
 
     @Test
+    @Ignore
     public void searchTest() throws InterruptedException {
 
         var es = new EsIndex();

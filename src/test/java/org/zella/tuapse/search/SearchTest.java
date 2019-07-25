@@ -20,11 +20,11 @@ import static org.mockito.Mockito.*;
 public class SearchTest {
 
     @Test
-    public void searchFile() throws InterruptedException {
+    public void searchFile() {
 
         var index = mock(Index.class);
 
-        when(index.search("пелагея казак", SearchMode.FILES_AND_NAMES, 0)).thenReturn(List.of(
+        when(index.search("пелагея казак", SearchMode.FILES, 1)).thenReturn(List.of(
                 FoundTorrent.create(StorableTorrent.create(
                         "пелагея", "h1", List.of(
                                 TFile.create("/Пелагея 2009/Тропы/тропы.mp3", -1),

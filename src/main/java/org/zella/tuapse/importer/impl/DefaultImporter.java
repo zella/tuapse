@@ -12,9 +12,9 @@ import org.zella.tuapse.model.torrent.LiveTorrent;
 import org.zella.tuapse.model.torrent.StorableTorrent;
 import org.zella.tuapse.storage.Index;
 import org.zella.tuapse.subprocess.Subprocess;
+import org.zella.tuapse.webtorrent.WebTorrentInterface;
 
 import java.util.List;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class DefaultImporter implements Importer {
@@ -23,14 +23,17 @@ public class DefaultImporter implements Importer {
 
     private final Index index;
 
-    public DefaultImporter(Index index) {
+    private final WebTorrentInterface webtorrent;
+
+    public DefaultImporter(Index index, WebTorrentInterface webtorrent) {
         this.index = index;
+        this.webtorrent = webtorrent;
     }
 
     @Override
     public Observable<LiveTorrent> evalTorrentsData(List<String> hash, Scheduler sc) {
         return Observable.fromIterable(hash)
-                .flatMap(h -> Subprocess.webtorrent(h)
+                .flatMap(h -> webtorrent.webtorrent(h)
                         .doOnSuccess(t -> logger.debug("Peers: [" + t.numPeers + "] " + t.name))
                         .subscribeOn(sc)
                         .toObservable()

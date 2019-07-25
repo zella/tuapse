@@ -17,6 +17,8 @@ import org.zella.tuapse.storage.impl.EsIndex;
 import org.zella.tuapse.storage.impl.LuceneIndex;
 import org.zella.tuapse.storage.impl.fake.MockEsSearch;
 import org.zella.tuapse.subprocess.Subprocess;
+import org.zella.tuapse.webtorrent.impl.CachedWebtorrent;
+import org.zella.tuapse.webtorrent.impl.DefaultWebtorrent;
 
 import java.nio.file.Paths;
 import java.util.List;
@@ -60,8 +62,9 @@ public class Runner {
             System.exit(-1);
         }
 
+        var webtorrent = new CachedWebtorrent();
 
-        var importer = new DefaultImporter(index);
+        var importer = new DefaultImporter(index, webtorrent);
 
         var search = new Search(index, importer);
 
@@ -74,7 +77,7 @@ public class Runner {
                     .onBackpressureBuffer(64, () -> logger.warn("Post process too slow!"),
                             BackpressureOverflowStrategy.DROP_LATEST)
                     //TODO test it
-                    .flatMap(hash -> Subprocess.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider)
+                    .flatMap(hash -> webtorrent.webtorrent(hash).subscribeOn(TuapseSchedulers.webtorrentSpider)
                             .flatMap(t -> Single.fromCallable(() -> index.insertTorrent(t)))
                             .toFlowable()
                             .doOnError(throwable -> logger.warn(throwable.getMessage()))

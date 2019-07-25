@@ -1,11 +1,18 @@
 package org.zella.tuapse.providers;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import io.reactivex.Notification;
 import io.reactivex.ObservableTransformer;
+import io.reactivex.Single;
+import io.reactivex.SingleTransformer;
 import io.reactivex.functions.Function;
+import org.zella.tuapse.model.torrent.LiveTorrent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class RxUtils {
 
@@ -35,5 +42,22 @@ public class RxUtils {
                 .skip(1)
                 .map(md -> md.current);
     }
+
+
+    public static <T, K> SingleTransformer<T, T> cachedShared(Cache<K, Notification<T>> sharedCache, K key) {
+        return source -> Single.defer(() -> {
+            var fromCached = sharedCache.getIfPresent(key);
+            if (fromCached == null)
+                return source
+                        .doOnSuccess(l -> sharedCache.put(key, Notification.createOnNext(l)))
+                        .doOnError(e -> sharedCache.put(key, Notification.createOnError(e)));
+            else if (fromCached.isOnNext())
+                return Single.just(fromCached.getValue());
+            else
+                return Single.error(fromCached.getError());
+        });
+
+    }
+
 
 }
