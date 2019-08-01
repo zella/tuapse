@@ -21,7 +21,7 @@ public class Subprocess {
 
     private static final Logger logger = LoggerFactory.getLogger(Subprocess.class);
     //TODO full path with "node.exe"
-    public static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "10"));
+    public static final int WebTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("WEBTORRENT_TIMEOUT_SEC", "8"));
     public static final String WebTorrentExec = (System.getenv().getOrDefault("WEBTORRENT_EXEC", "dht_web/webtorrent.js"));
     private static final String GenTorrentExec = (System.getenv().getOrDefault("GENTORRENT_EXEC", "dht_web/gen-torrent-file.js"));
     private static final int GenTorrentTimeoutSec = Integer.parseInt(System.getenv().getOrDefault("GENTORRENT_TIMEOUT_SEC", "25"));

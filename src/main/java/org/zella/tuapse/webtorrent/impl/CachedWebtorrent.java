@@ -12,8 +12,8 @@ import java.util.concurrent.TimeUnit;
 public class CachedWebtorrent extends DefaultWebtorrent {
 
     private final Cache<String, Notification<LiveTorrent>> cache = CacheBuilder.newBuilder()
-            .maximumSize(128)
-            .expireAfterWrite(2, TimeUnit.MINUTES)
+            .maximumSize(256)
+            .expireAfterWrite(3, TimeUnit.MINUTES)
             .build();
 
     @Override
